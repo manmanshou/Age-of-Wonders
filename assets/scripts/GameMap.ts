@@ -1,6 +1,6 @@
 
-import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch } from 'cc';
-import { AREA_GRID_COUNT, AREA_SIZE, DataManager, DataMgr, GridData, GRID_SIZE, MapAreaData, MapRoomData, VIEW_AREA_COUNT } from './DataManager';
+import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
+import { AREA_GRID_COUNT, AREA_SIZE, DataManager, DataMgr, GridData, GRID_SIZE, MapAreaData, MapData, MapRoomData, VIEW_AREA_COUNT } from './DataManager';
 const { ccclass, property } = _decorator;
 
 class MapGrid {
@@ -39,9 +39,14 @@ class MapArea {
     private _data: MapAreaData;
     private _self: Node;
 
+    public getData() {
+        return this._data;
+    }
+
     load (data:MapAreaData, parent:Node) {
-        this._grids = new Array(AREA_GRID_COUNT);
+        console.log("load area" + data.Crood.toString());
         this._data = data;
+        this._grids = new Array(AREA_GRID_COUNT);
         this._self = new Node(this._data.Crood.toString());
         this._self.parent = parent;
         for (var i = 0; i < AREA_GRID_COUNT; i++) {
@@ -50,7 +55,10 @@ class MapArea {
     }
 
     unload () {
-        this._self.destroy();
+        if (this._self != null) {
+            this._self.destroy();
+            this._self = null;
+        }
         this._data = null;
         this._grids = null;
     }
@@ -58,13 +66,13 @@ class MapArea {
  
 @ccclass('GameMap')
 export class GameMap extends Component {
+    private _data:MapData;
     //当前视野范围里的区块
-    private _viewAreas: MapArea[] = new Array(VIEW_AREA_COUNT);
-
-    private _touchStartPos:Vec2;
+    private _viewAreas = new Array<MapArea>(VIEW_AREA_COUNT);
+    private _currentArea = new Vec2();
+    private _touchStartPos = new Vec2();
 
     public WorldAssets:SpriteFrame[];
-
     public static Instance:GameMap; 
 
     @property({type:Camera})
@@ -74,15 +82,13 @@ export class GameMap extends Component {
     sceneRoot:Node = null;
 
     start () {
+        console.log("start map loading...");
 
         GameMap.Instance = this;
 
         DataMgr.genMapData();
 
-        console.log("start...");
-        for (var i = 0; i < VIEW_AREA_COUNT; i++) {
-            this._viewAreas[i] = new MapArea();
-        }
+        this._data = DataMgr.Map;
         
         resources.loadDir("scene/spriteFrame/world/style01", SpriteFrame, function (err, assets) {
             GameMap.Instance.onLoadAssetFinish(assets);
@@ -97,12 +103,75 @@ export class GameMap extends Component {
         this.node.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
         this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
 
-        this.checkLoadFromCamera();
+        this.checkLoadFromCamera(true);
     }
 
     //根据相机当前位置计算要加载和卸载的地图
-    checkLoadFromCamera() {
+    checkLoadFromCamera(isForceLoad:boolean) {
+        var cameraPos = this.camera.node.position;
+        var centerAreaX = Math.floor(cameraPos.x / (AREA_SIZE * GRID_SIZE));
+        var centerAreaY = Math.floor(cameraPos.y / (AREA_SIZE * GRID_SIZE));
+        math.clamp(centerAreaX, 0, this._data.Size.x - 1);
+        math.clamp(centerAreaY, 0, this._data.Size.y - 1);
+        if (!isForceLoad && this._currentArea.x == centerAreaX && this._currentArea.y == centerAreaY) {
+            return;
+        }
+        //获得需要加载的区块
+        var needLoadAreas = new Array<Vec2>();
+        for (var y = centerAreaY - 1; y <= centerAreaY + 1; y++) {
+            for (var x = centerAreaX - 1; x <= centerAreaX + 1; x++) {
+                if (x < 0 || x >= this._data.Size.x || y < 0 || y >= this._data.Size.y) {
+                    continue;
+                }
+                needLoadAreas.push(new Vec2(x, y));
+            }
+        }
+        //卸载不属于加载列表的当前区块
+        for (var i = 0; i < this._viewAreas.length; i++) {
+            var viewArea = this._viewAreas[i];
+            if (viewArea != null) {
+                var areaData = viewArea.getData();
+                var isFound = false;
+                for (var j = 0; j < needLoadAreas.length; j++) {
+                    if (areaData.Crood.strictEquals(needLoadAreas[j])) {
+                        isFound = true;
+                        break;
+                    }
+                }
+                if (!isFound) {
+                    viewArea.unload();
+                    this._viewAreas[i] = null;
+                }
+            }
+        }
+        //加载未加载的区块
+        for (var i = 0; i < needLoadAreas.length; i++) {
+            var loadArea = needLoadAreas[i];
+            var isFound = false;
+            for (var j = 0; j < this._viewAreas.length; j++) {
+                var viewArea = this._viewAreas[j];
+                if (viewArea != null && loadArea.strictEquals(viewArea.getData().Crood)) {
+                    isFound = true;
+                    break;
+                }
+            }
+            //找到一个空块进行加载
+            if (!isFound) {
+                for (var j = 0; j < this._viewAreas.length; j++) {
+                    var viewArea = this._viewAreas[j];
+                    if (viewArea == null) { 
+                        viewArea = new MapArea();
+                        const idx = loadArea.x + loadArea.y * this._data.Size.x;
+                        viewArea.load(this._data.Areas[idx], this.sceneRoot);
+                        this._viewAreas[j] = viewArea;
+                        break;
+                    }
+                }
+            }
+        }
 
+        this._currentArea.x = centerAreaX;
+        this._currentArea.y = centerAreaY;
     }
 
     onTouchStart(event:EventTouch) {
@@ -116,18 +185,19 @@ export class GameMap extends Component {
         Vec2.subtract(diff, pt, this._touchStartPos);
         var speed = 20;
         diff.multiplyScalar(game.deltaTime * speed);
-        this.camera.node.position = this.camera.node.position.add(new Vec3(diff.x, diff.y, 0));
+        var cameraPos = this.camera.node.position;
+        //限制相机的位置
+        var posX = cameraPos.x - diff.x;
+        var posY = cameraPos.y - diff.y;
+        var posZ = cameraPos.z;
+        if (posX < 0 || posX >= this._data.Size.x * AREA_SIZE * GRID_SIZE) posX = cameraPos.x;
+        if (posY < 0 || posY >= this._data.Size.y * AREA_SIZE * GRID_SIZE) posY = cameraPos.y;
+        this.camera.node.position = new Vec3(posX, posY, posZ);
         this._touchStartPos = pt;
     }
 
     onTouchEnd(event:EventTouch) {
         this._touchStartPos = null;
-    }
-
-    //生成一个地图块
-    generateMapBlock (size: Rect, entrance: Vec2, exit: Vec2) 
-    {
-
     }
 
     OnClick(btn: Button) {
