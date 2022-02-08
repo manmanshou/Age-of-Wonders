@@ -1,6 +1,6 @@
 
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
-import { AREA_GRID_COUNT, AREA_SIZE, DataManager, DataMgr, GridData, GRID_SIZE, MapAreaData, MapData, MapRoomData, VIEW_AREA_COUNT } from './DataManager';
+import { AREA_GRID_COUNT, AREA_SIZE, DataManager, DataMgr, GridData, GRID_SIZE, MapAreaData, MapData, VIEW_AREA_COUNT } from './DataManager';
 const { ccclass, property } = _decorator;
 
 class MapGrid {
@@ -97,6 +97,11 @@ export class GameMap extends Component {
 
     onLoadAssetFinish(assets) {
         this.WorldAssets = assets;
+        this.WorldAssets.sort(function(a:SpriteFrame, b:SpriteFrame) {
+            var aN = Number(a.name);
+            var bN = Number(b.name);
+            return aN - bN;
+        });
         
         //资源加载完毕后允许相机移动
         this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
