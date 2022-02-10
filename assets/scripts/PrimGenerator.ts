@@ -1,9 +1,14 @@
 
 import { _decorator, Component, Node, random, math, Vec2 } from 'cc';
-import { RoomWayLocation } from './DataManager';
+
 const { ccclass, property } = _decorator;
 
-const ROOM_SIGN_IDX:number = RoomWayLocation.Num; 
+//房间通往外部的通路所在房间的哪个方向
+export enum RoomWayLocation {
+    West, East, North, South, Num,
+}
+
+const ROOM_SIGN_IDX:number = RoomWayLocation.Num;
 
 export class PrimGenerator {
     public static Gen(rowCount:number, colCount:number) {
@@ -15,13 +20,13 @@ export class PrimGenerator {
             }
         }
 
-        var startRow = math.randomRange(0, rowCount);
-        var startCol = math.randomRange(0, colCount);
+        var startRow = math.randomRangeInt(0, rowCount);
+        var startCol = math.randomRangeInt(0, colCount);
         var waitProcRooms = new Array<Vec2>(); 
         waitProcRooms.push(new Vec2(startRow, startCol));
         var check = new Array<RoomWayLocation>(RoomWayLocation.Num);
         while (waitProcRooms.length > 0) {
-            var i = math.randomRange(0, waitProcRooms.length);
+            var i = math.randomRangeInt(0, waitProcRooms.length);
             var r = waitProcRooms[i].x;
             var c = waitProcRooms[i].y;
 
@@ -72,7 +77,7 @@ export class PrimGenerator {
             }
 
             if (check.length > 0) {
-                var move_dir = check[math.randomRange(0, check.length)];
+                var move_dir = check[math.randomRangeInt(0, check.length)];
                 if (move_dir == RoomWayLocation.West) {
                     mazeData[r][c][RoomWayLocation.West] = 1;
                     mazeData[r][c - 1][RoomWayLocation.East] = 1;

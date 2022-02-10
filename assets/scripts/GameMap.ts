@@ -6,7 +6,7 @@ const { ccclass, property } = _decorator;
 class MapGrid {
     private _sprFloor:Node;     
     private _sprOverlay:Node;
-    private _sprWall:Node;
+    private _sprObject:Node;
     private _sprFog:Node;
     private _data:GridData;
     private _parent:Node;
@@ -25,10 +25,15 @@ class MapGrid {
     }
 
     constructor(data:GridData, parent:Node) {
+        if (data == null)
+            return;
         this._data = data;
         this._parent = parent;
         if (this._sprFloor == null && data.Floor > 0) {
             this._sprFloor = this.createNode(data.Crood, data.Floor - 1);
+        }
+        if (this._sprObject == null && data.Object > 0) {
+            this._sprObject = this.createNode(data.Crood, data.Object - 1);
         }
     }
 }
@@ -44,10 +49,14 @@ class MapArea {
     }
 
     load (data:MapAreaData, parent:Node) {
-        console.log("load area" + data.Crood.toString());
+        if (data == null) {
+            console.log("load area null");
+            return;
+        }
+        console.log("load area" + data.AreaCrood.toString());
         this._data = data;
         this._grids = new Array(AREA_GRID_COUNT);
-        this._self = new Node(this._data.Crood.toString());
+        this._self = new Node(this._data.AreaCrood.toString());
         this._self.parent = parent;
         for (var i = 0; i < AREA_GRID_COUNT; i++) {
             this._grids[i] = new MapGrid(data.Grids[i], this._self);
@@ -86,7 +95,8 @@ export class GameMap extends Component {
 
         GameMap.Instance = this;
 
-        DataMgr.genMapData();
+        //DataMgr.genTestMap(); 
+        DataMgr.genMap(new Vec2(2,2));
 
         this._data = DataMgr.Map;
         
@@ -137,11 +147,13 @@ export class GameMap extends Component {
             if (viewArea != null) {
                 var areaData = viewArea.getData();
                 var isFound = false;
-                for (var j = 0; j < needLoadAreas.length; j++) {
-                    if (areaData.Crood.strictEquals(needLoadAreas[j])) {
-                        isFound = true;
-                        break;
-                    }
+                if (areaData != null) {
+                    for (var j = 0; j < needLoadAreas.length; j++) {
+                        if (areaData.AreaCrood.strictEquals(needLoadAreas[j])) {
+                            isFound = true;
+                            break; 
+                        }
+                    }    
                 }
                 if (!isFound) {
                     viewArea.unload();
@@ -155,9 +167,12 @@ export class GameMap extends Component {
             var isFound = false;
             for (var j = 0; j < this._viewAreas.length; j++) {
                 var viewArea = this._viewAreas[j];
-                if (viewArea != null && loadArea.strictEquals(viewArea.getData().Crood)) {
-                    isFound = true;
-                    break;
+                if (viewArea != null) {
+                    var data = viewArea.getData();
+                    if (viewArea != null && data!= null && loadArea.strictEquals(data.AreaCrood)) {
+                        isFound = true;
+                        break;
+                    }    
                 }
             }
             //找到一个空块进行加载
@@ -181,7 +196,6 @@ export class GameMap extends Component {
 
     onTouchStart(event:EventTouch) {
         this._touchStartPos = event.getLocation();
-        console.log(this._touchStartPos);
     }
 
     onTouchMove(event:EventTouch) {
@@ -199,6 +213,8 @@ export class GameMap extends Component {
         if (posY < 0 || posY >= this._data.Size.y * AREA_SIZE * GRID_SIZE) posY = cameraPos.y;
         this.camera.node.position = new Vec3(posX, posY, posZ);
         this._touchStartPos = pt;
+
+        this.checkLoadFromCamera(false);
     }
 
     onTouchEnd(event:EventTouch) {
