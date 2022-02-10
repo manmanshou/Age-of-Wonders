@@ -1,5 +1,6 @@
 
-import { _decorator, Component, Node, random, math, Vec2 } from 'cc';
+import { _decorator, Component, Node, random, Vec2 } from 'cc';
+import { Random } from './Random';
 
 const { ccclass, property } = _decorator;
 
@@ -20,13 +21,13 @@ export class PrimGenerator {
             }
         }
 
-        var startRow = math.randomRangeInt(0, rowCount);
-        var startCol = math.randomRangeInt(0, colCount);
+        var startRow = Random.randomRangeInt(0, rowCount);
+        var startCol = Random.randomRangeInt(0, colCount);
         var waitProcRooms = new Array<Vec2>(); 
         waitProcRooms.push(new Vec2(startRow, startCol));
         var check = new Array<RoomWayLocation>(RoomWayLocation.Num);
         while (waitProcRooms.length > 0) {
-            var i = math.randomRangeInt(0, waitProcRooms.length);
+            var i = Random.randomRangeInt(0, waitProcRooms.length);
             var r = waitProcRooms[i].x;
             var c = waitProcRooms[i].y;
 
@@ -77,7 +78,7 @@ export class PrimGenerator {
             }
 
             if (check.length > 0) {
-                var move_dir = check[math.randomRangeInt(0, check.length)];
+                var move_dir = check[Random.randomRangeInt(0, check.length)];
                 if (move_dir == RoomWayLocation.West) {
                     mazeData[r][c][RoomWayLocation.West] = 1;
                     mazeData[r][c - 1][RoomWayLocation.East] = 1;

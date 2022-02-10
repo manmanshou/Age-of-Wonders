@@ -96,7 +96,7 @@ export class GameMap extends Component {
         GameMap.Instance = this;
 
         //DataMgr.genTestMap(); 
-        DataMgr.genMap(new Vec2(2,2));
+        DataMgr.genMap(new Vec2(2,2), 10, 811);
 
         this._data = DataMgr.Map;
         

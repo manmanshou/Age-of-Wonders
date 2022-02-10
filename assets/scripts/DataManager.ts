@@ -1,6 +1,7 @@
 
-import { _decorator, Component, Node, Vec2, math, size } from 'cc';
+import { _decorator, Component, Node, Vec2, size } from 'cc';
 import { PrimGenerator, RoomWayLocation } from './PrimGenerator';
+import { Random } from './Random';
 const { ccclass, property } = _decorator;
 
 export const GRID_SIZE: number = 48;       //一个格子边长单位
@@ -109,70 +110,133 @@ export class MapAreaData {
             }
         }
     }
+
+    public isInArea(x:number, y:number) {
+        if (x < this.GridCrood.x || x >= this.GridCrood.x + AREA_SIZE || y < this.GridCrood.y || y >= this.GridCrood.y) {
+            return false;
+        }
+        return true;
+    }
+
+    public isBlock(x:number, y:number) {
+        x -= this.GridCrood.x;
+        y -= this.GridCrood.y;
+        var grid = this.Grids[y * AREA_SIZE + x];
+        if (grid == null) {
+            return true;
+        }
+        return grid.IsBlock;
+    }
+
+    public initGridsSprite(map:MapData) {
+        this.Grids.forEach(grid => {
+            var isSelfBlock = grid.IsBlock;
+            var x = grid.Crood.x; var y = grid.Crood.y + 1;
+            var isNorthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+            x = grid.Crood.x; y = grid.Crood.y - 1;
+            var isSourthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+            x = grid.Crood.x - 1; y = grid.Crood.y;
+            var isWestBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+            x = grid.Crood.x + 1; y = grid.Crood.y;
+            var isEastBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+            if (isSelfBlock) {
+                if (isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_ESWN;
+                }else if (isNorthBlock && !isSourthBlock && !isWestBlock && !isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_N;
+                }else if (!isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_S;
+                }else if (!isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_W;
+                }else if (!isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_E;
+                }else if (isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_SN;
+                }else if (isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_WN;
+                }else if (isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_EN;
+                }else if (!isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_SW;
+                }else if (!isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_ES;
+                }else if (!isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_EW;
+                }else if (isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_SWN;
+                }else if (!isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_ESW;
+                }else if (isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_EWN;
+                }else if (isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
+                    grid.Object = WorldSprDefine.Wall_ESN;
+                }else{
+                    grid.Object = WorldSprDefine.IndepWall;
+                }
+            }else{
+                grid.Floor = WorldSprDefine.Floor1;
+            }
+        });
+    }
 }
 
 export class MapData {
     public IsIndoor: boolean;              //是否为室内
     public Size: Vec2;                     //有X方向和Y方向各有多少个区域
     public Areas: MapAreaData[];           //区域
+    public RoomConn: Array<Array<Array<number>>>;   //房间连通关系
+    public Rooms: Array<Room>;
+    public RandSeed:number;
+
+    public isBlock(x:number, y:number) {
+        if (x < 0 || y < 0) {
+            return true;
+        }
+        var areaX = Math.floor(x / AREA_SIZE);
+        var areaY = Math.floor(y / AREA_SIZE);
+        if (areaX < 0 || areaX >= this.Size.x || areaY < 0 || areaY >= this.Size.y) {
+            return true;
+        }
+        var area = this.Areas[areaY * this.Size.x + areaX];
+        return area.isBlock(x, y);
+    }
 }
 
 export class DataManager {
     public Map: MapData;
 
-    public genMap(sizeOfRoom:Vec2) {
+    public genMap(countOfRoom:Vec2, roomMaxSize:number, randSeed:number) {
         this.Map = new MapData();
         this.Map.IsIndoor = true;
+        this.Map.RandSeed = randSeed;
+        Random.seed(this.Map.RandSeed);
+
         //Prim算法生成房间之间连通关系
-        var mazData = PrimGenerator.Gen(sizeOfRoom.y, sizeOfRoom.x);
+        this.Map.RoomConn = PrimGenerator.Gen(countOfRoom.y, countOfRoom.x);
+
+        var roomMinSize = Math.floor(roomMaxSize / 2) + 1;
+
         //生成若干个房间
-        var xMax = 0; //x方向上最大的格子数
-        var yMax = 0; //y方向上最大的格子数
-        var rooms = new Array<Room>();
-        for (var y = 0; y < sizeOfRoom.y; y++) {
-            var colX = 0;
-            var colY = 0;
-            for (var x = 0; x < sizeOfRoom.x; x++) {
-                var xCount = math.randomRangeInt(5, 10);
-                var yCount = math.randomRangeInt(5, 10);
-                if (yCount > colY) {
-                    colY = yCount;
-                }
-                var wayLocations = new Array<RoomWayLocation>();
-                if (mazData[x][y][RoomWayLocation.East] == 1) {
-                    wayLocations.push(RoomWayLocation.East);
-                }
-                if (mazData[x][y][RoomWayLocation.West] == 1) {
-                    wayLocations.push(RoomWayLocation.West);
-                }
-                if (mazData[x][y][RoomWayLocation.North] == 1) {
-                    wayLocations.push(RoomWayLocation.North);
-                }
-                if (mazData[x][y][RoomWayLocation.South] == 1) {
-                    wayLocations.push(RoomWayLocation.South);
-                }
-                var room = this.genRoom(new Vec2(colX, yMax), new Vec2(xCount, yCount), wayLocations, this.Map.IsIndoor, true);
-                rooms.push(room);
-                colX += xCount;
+        this.Map.Rooms = new Array<Room>();
+        for (var y = 0; y < countOfRoom.y; y++) {
+            for (var x = 0; x < countOfRoom.x; x++) {
+                var xCount = Random.randomRangeInt(roomMinSize, roomMaxSize);
+                var yCount = Random.randomRangeInt(roomMinSize, roomMaxSize);
+                var startX = x * roomMaxSize + Random.randomRangeInt(0, roomMaxSize - xCount); //随机摆放
+                var startY = y * roomMaxSize + Random.randomRangeInt(0, roomMaxSize - yCount);
+                var room = this.genRoom(new Vec2(startX, startY), new Vec2(xCount, yCount), this.Map.IsIndoor, true);
+                this.Map.Rooms.push(room);
             }
-            if (colX > xMax) {
-                xMax = colX;
-            }
-            yMax += colY;
         }
-        
-        // rooms.forEach(room => {
-        //     console.log("room", room.Size, room.StartGrid, room.Grids);
-        // });
 
         //把各个房间放入地图区块中
-        this.Map.Size = new Vec2(Math.ceil(xMax / AREA_SIZE), Math.ceil(yMax / AREA_SIZE));
+        this.Map.Size = new Vec2(Math.ceil(countOfRoom.x * roomMaxSize / AREA_SIZE), Math.ceil(countOfRoom.y * roomMaxSize / AREA_SIZE));
         this.Map.Areas = new Array<MapAreaData>();
         for (var y = 0; y < this.Map.Size.y; y++) {
             for (var x = 0; x < this.Map.Size.x; x++) {
                 var area = new MapAreaData(new Vec2(x, y));
                 //遍历房间查找相交的房间并填充
-                rooms.forEach(room => {
+                this.Map.Rooms.forEach(room => {
                     if (!((room.StartGrid.x > area.GridCrood.x + AREA_SIZE) || (room.StartGrid.y > area.GridCrood.y + AREA_SIZE) 
                     || (area.GridCrood.x > room.StartGrid.x + room.Size.x) || (area.GridCrood.y > room.StartGrid.y + room.Size.y))) {
                         area.fillRoomGrids(room);
@@ -181,11 +245,18 @@ export class DataManager {
                 this.Map.Areas.push(area);
             }
         }
-        //console.log("map gen complete, size=", this.Map.Size, xMax, yMax);
+
+        //按照连通关系，连通各个房间
+
+
+        //铺设基础图素（墙和空地的地板）
+        this.Map.Areas.forEach(area => {
+            area.initGridsSprite(this.Map);
+        });
     }
 
     //生成房间
-    private genRoom(start:Vec2, size:Vec2, wayLocation:RoomWayLocation[], isIndoor:boolean, isNature:boolean) {
+    private genRoom(start:Vec2, size:Vec2, isIndoor:boolean, isNature:boolean) {
         //初始化
         var room = new Room();
         room.StartGrid = start;
@@ -193,15 +264,10 @@ export class DataManager {
         room.Grids = new Array<GridData>();
         room.IsNature = isNature;
         room.IsIndoor = isIndoor;
-        room.Ways = new Array<RoomWay>();
-        for (var i = 0; i < wayLocation.length; i++) {
-            var way = new RoomWay();
-            way.Location = wayLocation[i];
-        }
         for (var y = 0; y < size.y; y++) {
             for (var x = 0; x < size.x; x++) {
                 var grid = new GridData();
-                grid.Crood = new Vec2(x + room.StartGrid.x, y + room.StartGrid.y);
+                grid.Crood = new Vec2(x + room.StartGrid.x, y + room.StartGrid.y); //绝对格子坐标
                 grid.FogType = FogType.UnExplored;
                 grid.IsBlock = true;
                 room.Grids.push(grid);
@@ -228,7 +294,7 @@ export class DataManager {
                 if (x == 0 || x == size.x - 1 || y == 0 || y == size.y - 1) {
                     grid.IsBlock = true;
                 }else {
-                    var isBlock = math.randomRangeInt(0, 100) < 50;
+                    var isBlock = Random.randomRangeInt(0, 100) < 50;
                     grid.IsBlock = isBlock;
                 }
             }
@@ -250,59 +316,13 @@ export class DataManager {
                         }
                     }
                     var grid = room.Grids[y * size.x + x];
-                    if (wallCount > 4) {
+                    if (wallCount > 5) {
                         grid.IsBlock = true;
                     }else {
-                        grid.IsBlock = false;
+                        if (!(x == 0 || x == size.x - 1 || y == 0 || y == size.y - 1)) { //外围墙壁不要挖掉
+                            grid.IsBlock = false;
+                        }
                     }
-                }
-            }
-        }
-        //铺设图素
-        for (var y = 0; y < size.y; y++) {
-            for (var x = 0; x < size.x; x++) {
-                var grid = room.Grids[y * size.x + x];
-                var isSelfBlock = grid.IsBlock;
-                var isNorthBlock = room.isBlock(x, y + 1);
-                var isSourthBlock = room.isBlock(x, y - 1);
-                var isWestBlock = room.isBlock(x - 1, y);
-                var isEastBlock = room.isBlock(x + 1, y);
-                if (isSelfBlock) {
-                    if (isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ESWN;
-                    }else if (isNorthBlock && !isSourthBlock && !isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_N;
-                    }else if (!isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_S;
-                    }else if (!isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_W;
-                    }else if (!isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_E;
-                    }else if (isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_SN;
-                    }else if (isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_WN;
-                    }else if (isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_EN;
-                    }else if (!isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_SW;
-                    }else if (!isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ES;
-                    }else if (!isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_EW;
-                    }else if (isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_SWN;
-                    }else if (!isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ESW;
-                    }else if (isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_EWN;
-                    }else if (isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ESN;
-                    }else{
-                        grid.Object = WorldSprDefine.IndepWall;
-                    }
-                }else{
-                    grid.Floor = WorldSprDefine.Floor1;
                 }
             }
         }
@@ -316,47 +336,12 @@ export class DataManager {
                 var grid = room.Grids[y * size.x + x];
                 if (x == 0 || x == size.x - 1 || y == 0 || y == size.y - 1) {
                     grid.IsBlock = true;
-                    if (x == 0 && y == 0) {
-                        grid.Object = WorldSprDefine.Wall_EN;
-                    }else if (x == 0 && y == size.y - 1) {
-                        grid.Object = WorldSprDefine.Wall_ES;
-                    }else if (x == size.x - 1 && y == 0) {
-                        grid.Object = WorldSprDefine.Wall_WN;
-                    }else if (x == size.x - 1 && y == size.y - 1) {
-                        grid.Object = WorldSprDefine.Wall_SW;
-                    }else if (x == 0 || x == size.x - 1) {
-                        grid.Object = WorldSprDefine.Wall_SN;
-                    }else if (y == 0 || y == size.y - 1) {
-                        grid.Object = WorldSprDefine.Wall_EW;
-                    }
                 }else {
                     grid.IsBlock = false;
-                    grid.Floor = WorldSprDefine.Floor1;
                 }
             }
         }
-
-        //处理通路
-        for (var i = 0; i < room.Ways.length; i++) {
-            var location = room.Ways[i].Location;
-            var wayPos: Vec2;
-            if (location == RoomWayLocation.East) {
-                wayPos = new Vec2(size.x - 1, math.randomRangeInt(1, size.y - 1));
-            } else if (location == RoomWayLocation.North) {
-                wayPos = new Vec2(math.randomRangeInt(1, size.x - 1), size.y - 1);
-            } else if (location == RoomWayLocation.South) {
-                wayPos = new Vec2(math.randomRangeInt(1, size.x - 1), 0);
-            } else {
-                wayPos = new Vec2(0, math.randomRangeInt(1, size.y - 1));
-            }
-            room.Ways[i].Pos = wayPos;
-            var grid = room.Grids[wayPos.x + wayPos.y * size.x];
-            grid.IsBlock = false;
-            grid.Object = WorldSprDefine.None;
-            grid.Floor = WorldSprDefine.Floor1;
-        }
     }
-
 }
 
 export const DataMgr:DataManager = new DataManager();
