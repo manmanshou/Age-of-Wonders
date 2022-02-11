@@ -271,7 +271,9 @@ export class DataManager {
                 var yCount = Random.randomRangeInt(roomMinSize, roomMaxSize);
                 var startX = x * roomMaxSizeWithSpace + Random.randomRangeInt(1, roomMaxSize - xCount); //随机摆放，至少留出一行空间便于连接
                 var startY = y * roomMaxSizeWithSpace + Random.randomRangeInt(1, roomMaxSize - yCount);
-                var room = this.genRoom(new Vec2(startX, startY), new Vec2(xCount, yCount), this.Map.RoomConn[y][x], this.Map.IsIndoor, true);
+                var crood = new Vec2(startX, startY);
+                var size = new Vec2(xCount, yCount);
+                var room = this.genRoom(crood, size, this.Map.RoomConn[y][x], this.Map.IsIndoor, false);
                 this.Map.Rooms.push(room);
             }
         }
