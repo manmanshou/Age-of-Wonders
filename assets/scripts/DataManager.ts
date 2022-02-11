@@ -58,18 +58,25 @@ export class GridData {
     public FogType:FogType;                 //覆盖雾的类型，雾叠在墙图素之上
     public IsBlock:boolean;                 //是否为阻挡
     public Trigger:number;                  //触发类型
+
+    constructor(crood:Vec2) {
+        this.Crood = crood; //绝对格子坐标
+        this.FogType = FogType.UnExplored;
+        this.IsBlock = true;
+    }
 }
 
 export class RoomWay {
-    public Pos:Vec2;
-    public Location:RoomWayLocation;
+    public Pos:Vec2;                        //房间通道位置
+    public Location:RoomWayLocation;        //通道所在方位
 }
 
 //地图房间代表地图一个预设的游戏空间
 export class Room {
     public StartGrid:Vec2;                  //起始格子坐标
     public Size:Vec2;                       //以格子为单位的尺寸
-    public Ways:RoomWay[];                  //通道所在方位列表
+    public Connect:Array<number>;           //是否与周围房间相连
+    public WayOut:Array<RoomWay>;           //出口列表
     public Grids:Array<GridData>;           //所有房间的格子预设数据
     public SpaceCount:number;               //没有阻挡的格子数量，代表活动空间数量
     public IsNature:boolean;                //是否是自然风格
@@ -80,6 +87,15 @@ export class Room {
             return true;
         }
         return this.Grids[y * this.Size.x + x].IsBlock;
+    }
+
+    public getWay(location:RoomWayLocation) {
+        for (var i = 0; i < this.WayOut.length; i++) {
+            if (this.WayOut[i].Location == location) {
+                return this.WayOut[i];
+            }
+        }
+        return null;
     }
 }
 
@@ -95,7 +111,6 @@ export class MapAreaData {
     }
 
     public fillRoomGrids(room:Room) {
-        //console.log("fill room", room, "Area", this.AreaCrood);
         var xStart = this.GridCrood.x > room.StartGrid.x ? this.GridCrood.x : room.StartGrid.x;
         var yStart = this.GridCrood.y > room.StartGrid.y ? this.GridCrood.y : room.StartGrid.y;
         var xEnd = (this.GridCrood.x + AREA_SIZE) < (room.StartGrid.x + room.Size.x) ? (this.GridCrood.x + AREA_SIZE) : (room.StartGrid.x + room.Size.x);
@@ -122,61 +137,79 @@ export class MapAreaData {
         x -= this.GridCrood.x;
         y -= this.GridCrood.y;
         var grid = this.Grids[y * AREA_SIZE + x];
-        if (grid == null) {
+        if (grid == undefined) {
             return true;
         }
         return grid.IsBlock;
     }
 
+    public removeBlock(x:number, y:number) {
+        x -= this.GridCrood.x;
+        y -= this.GridCrood.y;
+        var grid = this.Grids[y * AREA_SIZE + x];
+        if (grid == undefined) {
+            grid = new GridData(new Vec2(x + this.GridCrood.x, y + this.GridCrood.y));
+            this.Grids[y * AREA_SIZE + x] = grid;
+        }
+        grid.IsBlock = false;
+    }
+
     public initGridsSprite(map:MapData) {
-        this.Grids.forEach(grid => {
-            var isSelfBlock = grid.IsBlock;
-            var x = grid.Crood.x; var y = grid.Crood.y + 1;
-            var isNorthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
-            x = grid.Crood.x; y = grid.Crood.y - 1;
-            var isSourthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
-            x = grid.Crood.x - 1; y = grid.Crood.y;
-            var isWestBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
-            x = grid.Crood.x + 1; y = grid.Crood.y;
-            var isEastBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
-            if (isSelfBlock) {
-                if (isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_ESWN;
-                }else if (isNorthBlock && !isSourthBlock && !isWestBlock && !isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_N;
-                }else if (!isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_S;
-                }else if (!isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_W;
-                }else if (!isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_E;
-                }else if (isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_SN;
-                }else if (isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_WN;
-                }else if (isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_EN;
-                }else if (!isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_SW;
-                }else if (!isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_ES;
-                }else if (!isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_EW;
-                }else if (isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_SWN;
-                }else if (!isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_ESW;
-                }else if (isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_EWN;
-                }else if (isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
-                    grid.Object = WorldSprDefine.Wall_ESN;
-                }else{
-                    grid.Object = WorldSprDefine.IndepWall;
+        for (var _y = 0; _y < AREA_SIZE; _y++) {
+            for (var _x = 0; _x < AREA_SIZE; _x++) {
+                var grid = this.Grids[_y * AREA_SIZE + _x];
+                if (grid == undefined) {
+                    grid = new GridData(new Vec2(_x + this.GridCrood.x, _y + this.GridCrood.y));
+                    this.Grids[_y * AREA_SIZE + _x] = grid;
                 }
-            }else{
-                grid.Floor = WorldSprDefine.Floor1;
+                var isSelfBlock = grid.IsBlock;
+                var x = grid.Crood.x; var y = grid.Crood.y + 1;
+                var isNorthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                x = grid.Crood.x; y = grid.Crood.y - 1;
+                var isSourthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                x = grid.Crood.x - 1; y = grid.Crood.y;
+                var isWestBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                x = grid.Crood.x + 1; y = grid.Crood.y;
+                var isEastBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                if (isSelfBlock) {
+                    if (isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_ESWN;
+                    }else if (isNorthBlock && !isSourthBlock && !isWestBlock && !isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_N;
+                    }else if (!isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_S;
+                    }else if (!isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_W;
+                    }else if (!isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_E;
+                    }else if (isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_SN;
+                    }else if (isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_WN;
+                    }else if (isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_EN;
+                    }else if (!isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_SW;
+                    }else if (!isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_ES;
+                    }else if (!isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_EW;
+                    }else if (isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_SWN;
+                    }else if (!isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_ESW;
+                    }else if (isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_EWN;
+                    }else if (isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
+                        grid.Object = WorldSprDefine.Wall_ESN;
+                    }else{
+                        grid.Object = WorldSprDefine.IndepWall;
+                    }
+                }else{
+                    grid.Floor = WorldSprDefine.Floor1;
+                }    
             }
-        });
+        }
     }
 }
 
@@ -200,6 +233,20 @@ export class MapData {
         var area = this.Areas[areaY * this.Size.x + areaX];
         return area.isBlock(x, y);
     }
+
+    public removeBlock(x:number, y:number) {
+        if (x < 0 || y < 0) {
+            return true;
+        }
+        var areaX = Math.floor(x / AREA_SIZE);
+        var areaY = Math.floor(y / AREA_SIZE);
+        if (areaX < 0 || areaX >= this.Size.x || areaY < 0 || areaY >= this.Size.y) {
+            return true;
+        }
+        var area = this.Areas[areaY * this.Size.x + areaX];
+        console.log("remove", x, y);
+        area.removeBlock(x, y);
+    }
 }
 
 export class DataManager {
@@ -213,24 +260,24 @@ export class DataManager {
 
         //Prim算法生成房间之间连通关系
         this.Map.RoomConn = PrimGenerator.Gen(countOfRoom.y, countOfRoom.x);
-
+        
         var roomMinSize = Math.floor(roomMaxSize / 2) + 1;
-
+        var roomMaxSizeWithSpace = roomMaxSize + 2;
         //生成若干个房间
         this.Map.Rooms = new Array<Room>();
         for (var y = 0; y < countOfRoom.y; y++) {
             for (var x = 0; x < countOfRoom.x; x++) {
                 var xCount = Random.randomRangeInt(roomMinSize, roomMaxSize);
                 var yCount = Random.randomRangeInt(roomMinSize, roomMaxSize);
-                var startX = x * roomMaxSize + Random.randomRangeInt(0, roomMaxSize - xCount); //随机摆放
-                var startY = y * roomMaxSize + Random.randomRangeInt(0, roomMaxSize - yCount);
-                var room = this.genRoom(new Vec2(startX, startY), new Vec2(xCount, yCount), this.Map.IsIndoor, true);
+                var startX = x * roomMaxSizeWithSpace + Random.randomRangeInt(1, roomMaxSize - xCount); //随机摆放，至少留出一行空间便于连接
+                var startY = y * roomMaxSizeWithSpace + Random.randomRangeInt(1, roomMaxSize - yCount);
+                var room = this.genRoom(new Vec2(startX, startY), new Vec2(xCount, yCount), this.Map.RoomConn[y][x], this.Map.IsIndoor, true);
                 this.Map.Rooms.push(room);
             }
         }
 
         //把各个房间放入地图区块中
-        this.Map.Size = new Vec2(Math.ceil(countOfRoom.x * roomMaxSize / AREA_SIZE), Math.ceil(countOfRoom.y * roomMaxSize / AREA_SIZE));
+        this.Map.Size = new Vec2(Math.ceil(countOfRoom.x * roomMaxSizeWithSpace / AREA_SIZE), Math.ceil(countOfRoom.y * roomMaxSizeWithSpace / AREA_SIZE));
         this.Map.Areas = new Array<MapAreaData>();
         for (var y = 0; y < this.Map.Size.y; y++) {
             for (var x = 0; x < this.Map.Size.x; x++) {
@@ -247,7 +294,89 @@ export class DataManager {
         }
 
         //按照连通关系，连通各个房间
-
+        var allConns = new Map<string, Array<RoomWay>>();
+        for (var i = 0; i < this.Map.Rooms.length; i++) {
+            var room = this.Map.Rooms[i];
+            for (var loc = 0; loc < room.Connect.length - 1; loc++) {
+                if (room.Connect[loc] == 1) {
+                    var connRoomIdx = -1;
+                    var connLoc;
+                    if (loc == RoomWayLocation.East) {
+                        connRoomIdx = i + 1;
+                        connLoc = RoomWayLocation.West;
+                    }else if (loc == RoomWayLocation.West) {
+                        connRoomIdx = i - 1;
+                        connLoc = RoomWayLocation.East;
+                    }else if (loc == RoomWayLocation.North) {
+                        connRoomIdx = i + countOfRoom.x;
+                        connLoc = RoomWayLocation.South;
+                    }else if (loc == RoomWayLocation.South) {
+                        connRoomIdx = i - countOfRoom.x;
+                        connLoc = RoomWayLocation.North;
+                    }
+                    if (connRoomIdx >= 0 && connRoomIdx < this.Map.Rooms.length) {
+                        var key = (i < connRoomIdx) ? i + "-" + connRoomIdx : connRoomIdx + "-" + i;
+                        if (!allConns.has(key)) {
+                            var way1 = this.Map.Rooms[connRoomIdx].getWay(connLoc);
+                            var way2 = room.getWay(loc);
+                            var arr = [way1, way2];
+                            allConns.set(key, arr);                            
+                        }
+                    }
+                }
+            }
+        }
+        
+        allConns.forEach((value, key) => {
+            var way1 = value[0];
+            var way2 = value[1];
+            var startX = (way1.Pos.x > way2.Pos.x) ? way2.Pos.x : way1.Pos.x;
+            var endX = (way1.Pos.x > way2.Pos.x) ? way1.Pos.x : way2.Pos.x; 
+            if (startX > endX) startX = endX;
+            var midX = Random.randomRangeInt(startX + 1, endX - 1);
+            if (midX < 0) midX = startX + 1;
+            var startY = (way1.Pos.y > way2.Pos.y) ? way2.Pos.y: way1.Pos.y;
+            var endY = (way1.Pos.y > way2.Pos.y) ? way1.Pos.y : way2.Pos.y;
+            if (startY > endY) startY = endY;
+            var midY = Random.randomRangeInt(startY + 1, endY - 1);
+            if (midY < 0) midY = startY + 1;
+            var notNeedFlip = (startX == way1.Pos.x && startY == way1.Pos.y || startX == way2.Pos.x && startY == way2.Pos.y);
+            if (way1.Location == RoomWayLocation.East || way1.Location == RoomWayLocation.West) {
+                for (var x = startX + 1; x <= midX; x++) {
+                    if (notNeedFlip) {
+                        this.Map.removeBlock(x, startY);
+                    }else{
+                        this.Map.removeBlock(x, endY);
+                    } 
+                }
+                for (var y = startY + 1; y <= endY; y++) {
+                    this.Map.removeBlock(midX, y);
+                }
+                for (var x = midX; x <= endX - 1; x++) {
+                    if (notNeedFlip) {
+                        this.Map.removeBlock(x, endY);
+                    }else{
+                        this.Map.removeBlock(x, startY);
+                    }
+                }
+            }else{
+                for (var y = startY + 1; y <= midY; y++) {
+                    if (notNeedFlip)
+                        this.Map.removeBlock(startX, y);
+                    else
+                        this.Map.removeBlock(endX, y);    
+                }
+                for (var x = startX + 1; x <= endX; x++) {
+                    this.Map.removeBlock(x, midY);
+                }
+                for (var y = midY; y <= endY - 1; y++) {
+                    if (notNeedFlip)
+                        this.Map.removeBlock(endX, y);
+                    else  
+                        this.Map.removeBlock(startX, y);  
+                }
+            }
+        });
 
         //铺设基础图素（墙和空地的地板）
         this.Map.Areas.forEach(area => {
@@ -256,20 +385,18 @@ export class DataManager {
     }
 
     //生成房间
-    private genRoom(start:Vec2, size:Vec2, isIndoor:boolean, isNature:boolean) {
+    private genRoom(start:Vec2, size:Vec2, conn:Array<number>, isIndoor:boolean, isNature:boolean) {
         //初始化
         var room = new Room();
         room.StartGrid = start;
         room.Size = size;
+        room.Connect = conn;
         room.Grids = new Array<GridData>();
         room.IsNature = isNature;
         room.IsIndoor = isIndoor;
         for (var y = 0; y < size.y; y++) {
             for (var x = 0; x < size.x; x++) {
-                var grid = new GridData();
-                grid.Crood = new Vec2(x + room.StartGrid.x, y + room.StartGrid.y); //绝对格子坐标
-                grid.FogType = FogType.UnExplored;
-                grid.IsBlock = true;
+                var grid = new GridData(new Vec2(x + room.StartGrid.x, y + room.StartGrid.y));
                 room.Grids.push(grid);
             }
         }
@@ -280,6 +407,68 @@ export class DataManager {
             this.genDungeonRoom(room);
         }
 
+        //根据连接关系在四面墙的位置上生成通道
+        room.WayOut = new Array();
+        if (conn[RoomWayLocation.West] == 1) {
+            var y = Random.randomRangeInt(1, size.y - 1);
+            var way = new RoomWay();
+            way.Location = RoomWayLocation.West;
+            way.Pos = new Vec2(room.StartGrid.x, room.StartGrid.y + y);
+            room.WayOut.push(way);
+            for (var x = 0; x < size.x; x++) {
+                var grid = room.Grids[y * size.x + x];
+                if (grid.IsBlock) {
+                    grid.IsBlock = false;
+                }else{
+                    break;
+                }
+            }
+        }
+        if (conn[RoomWayLocation.East] == 1) {
+            var y = Random.randomRangeInt(1, size.y - 1);
+            var way = new RoomWay();
+            way.Location = RoomWayLocation.East;
+            way.Pos = new Vec2(room.StartGrid.x + size.x - 1, room.StartGrid.y + y);
+            room.WayOut.push(way);
+            for (var x = size.x - 1; x >= 0; x--) {
+                var grid = room.Grids[y * size.x + x];
+                if (grid.IsBlock) {
+                    grid.IsBlock = false;
+                }else{
+                    break;
+                }
+            }
+        }
+        if (conn[RoomWayLocation.North] == 1) {
+            var x = Random.randomRangeInt(size.y - 1, 1);
+            var way = new RoomWay();
+            way.Location = RoomWayLocation.North;
+            way.Pos = new Vec2(room.StartGrid.x + x, room.StartGrid.y + size.y - 1);
+            room.WayOut.push(way);
+            for (var y = size.y - 1; y >= 0; y--) {
+                var grid = room.Grids[y * size.x + x];
+                if (grid.IsBlock) {
+                    grid.IsBlock = false;
+                }else{
+                    break;
+                }
+            }
+        }
+        if (conn[RoomWayLocation.South] == 1) {
+            var x = Random.randomRangeInt(size.y - 1, 1);
+            var way = new RoomWay();
+            way.Location = RoomWayLocation.South;
+            way.Pos = new Vec2(room.StartGrid.x + x, room.StartGrid.y);
+            room.WayOut.push(way);
+            for (var y = 0; y < size.y; y++) {
+                var grid = room.Grids[y * size.x + x];
+                if (grid.IsBlock) {
+                    grid.IsBlock = false;
+                }else{
+                    break;
+                }
+            }
+        }
         return room;
     }
 

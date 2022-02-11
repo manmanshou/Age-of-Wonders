@@ -18,6 +18,9 @@ export class PrimGenerator {
             mazeData[i] = new Array(colCount);
             for (var j = 0; j < colCount; j++) {
                 mazeData[i][j] = new Array<number>(RoomWayLocation.Num + 1);
+                for (var k = 0; k < mazeData[i][j].length; k++) {
+                    mazeData[i][j][k] = 0;
+                }
             }
         }
 
