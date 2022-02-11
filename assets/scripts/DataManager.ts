@@ -4,9 +4,10 @@ import { PrimGenerator, RoomWayLocation } from './PrimGenerator';
 import { Random } from './Random';
 const { ccclass, property } = _decorator;
 
-export const GRID_SIZE: number = 48;       //一个格子边长单位
-export const AREA_SIZE: number = 4;       //一个区块边的格子数量
-export const AREA_GRID_COUNT: number = AREA_SIZE * AREA_SIZE;
+export const GRID_SIZE: number = 48;        //一个格子边长单位
+export const AREA_SIZE_X: number = 10;       //一个区块边的格子数量
+export const AREA_SIZE_Y: number = 6;       //一个区块边的格子数量
+export const AREA_GRID_COUNT: number = AREA_SIZE_X * AREA_SIZE_Y;
 export const VIEW_AREA_SIDE: number = 3;   //相机可见范围单边的区域数量
 export const VIEW_AREA_COUNT: number = VIEW_AREA_SIDE * VIEW_AREA_SIDE;   //相机可见范围单边的区域数量
 
@@ -106,28 +107,28 @@ export class MapAreaData {
 
     constructor(areaCrood:Vec2) {
         this.AreaCrood = areaCrood;
-        this.GridCrood = new Vec2(areaCrood.x * AREA_SIZE, areaCrood.y * AREA_SIZE);
+        this.GridCrood = new Vec2(areaCrood.x * AREA_SIZE_X, areaCrood.y * AREA_SIZE_Y);
         this.Grids = new Array<GridData>(AREA_GRID_COUNT);
     }
 
     public fillRoomGrids(room:Room) {
         var xStart = this.GridCrood.x > room.StartGrid.x ? this.GridCrood.x : room.StartGrid.x;
         var yStart = this.GridCrood.y > room.StartGrid.y ? this.GridCrood.y : room.StartGrid.y;
-        var xEnd = (this.GridCrood.x + AREA_SIZE) < (room.StartGrid.x + room.Size.x) ? (this.GridCrood.x + AREA_SIZE) : (room.StartGrid.x + room.Size.x);
-        var yEnd = (this.GridCrood.y + AREA_SIZE) < (room.StartGrid.y + room.Size.y) ? (this.GridCrood.y + AREA_SIZE) : (room.StartGrid.y + room.Size.y);
+        var xEnd = (this.GridCrood.x + AREA_SIZE_X) < (room.StartGrid.x + room.Size.x) ? (this.GridCrood.x + AREA_SIZE_X) : (room.StartGrid.x + room.Size.x);
+        var yEnd = (this.GridCrood.y + AREA_SIZE_Y) < (room.StartGrid.y + room.Size.y) ? (this.GridCrood.y + AREA_SIZE_Y) : (room.StartGrid.y + room.Size.y);
         for (var y = yStart; y < yEnd; y++) {
             var areaY = y - this.GridCrood.y;
             var roomY = y - room.StartGrid.y;
             for (var x = xStart; x < xEnd; x++) {
                 var areaX = x - this.GridCrood.x;
                 var roomX = x - room.StartGrid.x;
-                this.Grids[areaY * AREA_SIZE + areaX] = room.Grids[roomY * room.Size.x + roomX];
+                this.Grids[areaY * AREA_SIZE_X + areaX] = room.Grids[roomY * room.Size.x + roomX];
             }
         }
     }
 
     public isInArea(x:number, y:number) {
-        if (x < this.GridCrood.x || x >= this.GridCrood.x + AREA_SIZE || y < this.GridCrood.y || y >= this.GridCrood.y) {
+        if (x < this.GridCrood.x || x >= this.GridCrood.x + AREA_SIZE_X || y < this.GridCrood.y || y >= this.GridCrood.y) {
             return false;
         }
         return true;
@@ -136,7 +137,7 @@ export class MapAreaData {
     public isBlock(x:number, y:number) {
         x -= this.GridCrood.x;
         y -= this.GridCrood.y;
-        var grid = this.Grids[y * AREA_SIZE + x];
+        var grid = this.Grids[y * AREA_SIZE_X + x];
         if (grid == undefined) {
             return true;
         }
@@ -146,21 +147,21 @@ export class MapAreaData {
     public removeBlock(x:number, y:number) {
         x -= this.GridCrood.x;
         y -= this.GridCrood.y;
-        var grid = this.Grids[y * AREA_SIZE + x];
+        var grid = this.Grids[y * AREA_SIZE_X + x];
         if (grid == undefined) {
             grid = new GridData(new Vec2(x + this.GridCrood.x, y + this.GridCrood.y));
-            this.Grids[y * AREA_SIZE + x] = grid;
+            this.Grids[y * AREA_SIZE_X + x] = grid;
         }
         grid.IsBlock = false;
     }
 
     public initGridsSprite(map:MapData) {
-        for (var _y = 0; _y < AREA_SIZE; _y++) {
-            for (var _x = 0; _x < AREA_SIZE; _x++) {
-                var grid = this.Grids[_y * AREA_SIZE + _x];
+        for (var _y = 0; _y < AREA_SIZE_X; _y++) {
+            for (var _x = 0; _x < AREA_SIZE_X; _x++) {
+                var grid = this.Grids[_y * AREA_SIZE_X + _x];
                 if (grid == undefined) {
                     grid = new GridData(new Vec2(_x + this.GridCrood.x, _y + this.GridCrood.y));
-                    this.Grids[_y * AREA_SIZE + _x] = grid;
+                    this.Grids[_y * AREA_SIZE_X + _x] = grid;
                 }
                 var isSelfBlock = grid.IsBlock;
                 var x = grid.Crood.x; var y = grid.Crood.y + 1;
@@ -225,8 +226,8 @@ export class MapData {
         if (x < 0 || y < 0) {
             return true;
         }
-        var areaX = Math.floor(x / AREA_SIZE);
-        var areaY = Math.floor(y / AREA_SIZE);
+        var areaX = Math.floor(x / AREA_SIZE_X);
+        var areaY = Math.floor(y / AREA_SIZE_Y);
         if (areaX < 0 || areaX >= this.Size.x || areaY < 0 || areaY >= this.Size.y) {
             return true;
         }
@@ -238,8 +239,8 @@ export class MapData {
         if (x < 0 || y < 0) {
             return true;
         }
-        var areaX = Math.floor(x / AREA_SIZE);
-        var areaY = Math.floor(y / AREA_SIZE);
+        var areaX = Math.floor(x / AREA_SIZE_X);
+        var areaY = Math.floor(y / AREA_SIZE_Y);
         if (areaX < 0 || areaX >= this.Size.x || areaY < 0 || areaY >= this.Size.y) {
             return true;
         }
@@ -276,14 +277,14 @@ export class DataManager {
         }
 
         //把各个房间放入地图区块中
-        this.Map.Size = new Vec2(Math.ceil(countOfRoom.x * roomMaxSizeWithSpace / AREA_SIZE), Math.ceil(countOfRoom.y * roomMaxSizeWithSpace / AREA_SIZE));
+        this.Map.Size = new Vec2(Math.ceil(countOfRoom.x * roomMaxSizeWithSpace / AREA_SIZE_X), Math.ceil(countOfRoom.y * roomMaxSizeWithSpace / AREA_SIZE_Y));
         this.Map.Areas = new Array<MapAreaData>();
         for (var y = 0; y < this.Map.Size.y; y++) {
             for (var x = 0; x < this.Map.Size.x; x++) {
                 var area = new MapAreaData(new Vec2(x, y));
                 //遍历房间查找相交的房间并填充
                 this.Map.Rooms.forEach(room => {
-                    if (!((room.StartGrid.x > area.GridCrood.x + AREA_SIZE) || (room.StartGrid.y > area.GridCrood.y + AREA_SIZE) 
+                    if (!((room.StartGrid.x > area.GridCrood.x + AREA_SIZE_X) || (room.StartGrid.y > area.GridCrood.y + AREA_SIZE_Y) 
                     || (area.GridCrood.x > room.StartGrid.x + room.Size.x) || (area.GridCrood.y > room.StartGrid.y + room.Size.y))) {
                         area.fillRoomGrids(room);
                     }

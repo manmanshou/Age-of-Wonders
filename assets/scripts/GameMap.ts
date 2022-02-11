@@ -1,6 +1,6 @@
 
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
-import { AREA_GRID_COUNT, AREA_SIZE, DataManager, DataMgr, GridData, GRID_SIZE, MapAreaData, MapData, VIEW_AREA_COUNT } from './DataManager';
+import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, DataManager, DataMgr, GridData, GRID_SIZE, MapAreaData, MapData, VIEW_AREA_COUNT } from './DataManager';
 const { ccclass, property } = _decorator;
 
 class MapGrid {
@@ -95,8 +95,7 @@ export class GameMap extends Component {
 
         GameMap.Instance = this;
 
-        //DataMgr.genTestMap(); 
-        DataMgr.genMap(new Vec2(3,3), 10, 811);
+        DataMgr.genMap(new Vec2(3,3), 12, 811);
 
         this._data = DataMgr.Map;
         
@@ -124,8 +123,8 @@ export class GameMap extends Component {
     //根据相机当前位置计算要加载和卸载的地图
     checkLoadFromCamera(isForceLoad:boolean) {
         var cameraPos = this.camera.node.position;
-        var centerAreaX = Math.floor(cameraPos.x / (AREA_SIZE * GRID_SIZE));
-        var centerAreaY = Math.floor(cameraPos.y / (AREA_SIZE * GRID_SIZE));
+        var centerAreaX = Math.floor(cameraPos.x / (AREA_SIZE_X * GRID_SIZE));
+        var centerAreaY = Math.floor(cameraPos.y / (AREA_SIZE_Y * GRID_SIZE));
         math.clamp(centerAreaX, 0, this._data.Size.x - 1);
         math.clamp(centerAreaY, 0, this._data.Size.y - 1);
         if (!isForceLoad && this._currentArea.x == centerAreaX && this._currentArea.y == centerAreaY) {
@@ -209,8 +208,8 @@ export class GameMap extends Component {
         var posX = cameraPos.x - diff.x;
         var posY = cameraPos.y - diff.y;
         var posZ = cameraPos.z;
-        if (posX < 0 || posX >= this._data.Size.x * AREA_SIZE * GRID_SIZE) posX = cameraPos.x;
-        if (posY < 0 || posY >= this._data.Size.y * AREA_SIZE * GRID_SIZE) posY = cameraPos.y;
+        if (posX < 0 || posX >= this._data.Size.x * AREA_SIZE_X * GRID_SIZE) posX = cameraPos.x;
+        if (posY < 0 || posY >= this._data.Size.y * AREA_SIZE_Y * GRID_SIZE) posY = cameraPos.y;
         this.camera.node.position = new Vec3(posX, posY, posZ);
         this._touchStartPos = pt;
 
