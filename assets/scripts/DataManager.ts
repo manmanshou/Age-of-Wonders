@@ -244,7 +244,6 @@ export class MapData {
             return true;
         }
         var area = this.Areas[areaY * this.Size.x + areaX];
-        console.log("remove", x, y);
         area.removeBlock(x, y);
     }
 }
@@ -440,7 +439,7 @@ export class DataManager {
             }
         }
         if (conn[RoomWayLocation.North] == 1) {
-            var x = Random.randomRangeInt(size.y - 1, 1);
+            var x = Random.randomRangeInt(1, size.x - 1);
             var way = new RoomWay();
             way.Location = RoomWayLocation.North;
             way.Pos = new Vec2(room.StartGrid.x + x, room.StartGrid.y + size.y - 1);
@@ -455,7 +454,7 @@ export class DataManager {
             }
         }
         if (conn[RoomWayLocation.South] == 1) {
-            var x = Random.randomRangeInt(size.y - 1, 1);
+            var x = Random.randomRangeInt(1, size.x - 1);
             var way = new RoomWay();
             way.Location = RoomWayLocation.South;
             way.Pos = new Vec2(room.StartGrid.x + x, room.StartGrid.y);
