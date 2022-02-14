@@ -22,6 +22,17 @@ export class HeroData {
 
 export class PlayerData {
     public Heros:Array<HeroData>;
+
+    public static New() {
+        var playerData = new PlayerData();
+        playerData.Heros = new Array<HeroData>();
+        var heroData =  new HeroData();
+        heroData.Rank = 0;
+        heroData.Level = 1;
+        heroData.MaxBagItem = 20;
+        playerData.Heros.push(heroData);
+        return playerData;
+    }
 }
 
 export class Player {

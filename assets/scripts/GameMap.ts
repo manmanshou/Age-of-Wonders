@@ -76,30 +76,27 @@ class MapArea {
  
 @ccclass('GameMap')
 export class GameMap extends Component {
-    private _data:MapData;
+    public _data:MapData;
     //当前视野范围里的区块
     private _viewAreas = new Array<MapArea>(VIEW_AREA_COUNT);
     private _currentArea = new Vec2();
     private _touchStartPos = new Vec2();
-
     public WorldAssets:SpriteFrame[];
-    public static Instance:GameMap; 
+    public static Instance:GameMap;
 
-    @property({type:Camera})
     camera:Camera = null;
 
-    @property({type:Node})
     sceneRoot:Node = null;
 
+    public static init(rootScene:Node, sprRoot, camera:Camera) {
+        var map = sprRoot.addComponent(GameMap);
+        map.sceneRoot = rootScene;
+        map.camera = camera;
+        GameMap.Instance = map;
+    }
+
     start () {
-        console.log("start map loading...");
-
-        GameMap.Instance = this;
-
-        DataManager.loadMap();
-
         this._data = DataManager.MapData;
-        
         resources.loadDir("scene/spriteFrame/world/style01", SpriteFrame, function (err, assets) {
             GameMap.Instance.onLoadAssetFinish(assets);
         });
