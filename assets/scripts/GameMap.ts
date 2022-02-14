@@ -1,6 +1,7 @@
 
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
-import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, DataManager, DataMgr, GridData, GRID_SIZE, MapAreaData, MapData, VIEW_AREA_COUNT } from './DataManager';
+import { DataManager } from './DataManager';
+import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT } from './MapGenerator';
 const { ccclass, property } = _decorator;
 
 class MapGrid {
@@ -95,9 +96,9 @@ export class GameMap extends Component {
 
         GameMap.Instance = this;
 
-        DataMgr.genMap(new Vec2(3,3), 12, 811);
+        DataManager.loadMap();
 
-        this._data = DataMgr.Map;
+        this._data = DataManager.MapData;
         
         resources.loadDir("scene/spriteFrame/world/style01", SpriteFrame, function (err, assets) {
             GameMap.Instance.onLoadAssetFinish(assets);
