@@ -1,5 +1,6 @@
 
-import { _decorator, Component, Node } from 'cc';
+import { _decorator, Component, Node, Vec2 } from 'cc';
+import { MapHero } from './MapHero';
 const { ccclass, property } = _decorator;
 
 export class BagItemData {
@@ -18,6 +19,7 @@ export class HeroData {
     public Class:Number;
     public MaxBagItem:number;
     public Bag:BagData;
+    public Name:string;
 }
 
 export class PlayerData {
@@ -37,5 +39,16 @@ export class PlayerData {
 
 export class Player {
     private _data : PlayerData;
+
+    private _heros : Array<MapHero> = new Array<MapHero>();
+
+    constructor(data:PlayerData) {
+        this._data = data;
+
+        this._data.Heros.forEach(heroData => {
+            var hero = new MapHero(heroData);
+            this._heros.push(hero);
+        });
+    }
 }
 

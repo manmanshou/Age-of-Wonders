@@ -19,7 +19,9 @@ export class GameStart extends Component {
     start () {
         DataManager.loadMap();
 
-        GameMap.init(this.sceneRoot,this.spriteRoot, this.camera);
+        DataManager.loadPlayer();
+
+        GameMap.Instance.init(this.sceneRoot, this.spriteRoot, this.camera);
     }
 }
 

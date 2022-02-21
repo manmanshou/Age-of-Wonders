@@ -2,6 +2,8 @@
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
 import { DataManager } from './DataManager';
 import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT } from './MapGenerator';
+import { Player } from './Player';
+import { ResManager } from './ResManager';
 const { ccclass, property } = _decorator;
 
 class MapGrid {
@@ -13,7 +15,7 @@ class MapGrid {
     private _parent:Node;
 
     createNode(crood:Vec2, frameId:number) {
-        var sprFrame = GameMap.Instance.WorldAssets[frameId];
+        var sprFrame = ResManager.Instance.WorldAssets[frameId];
         var node = new Node(sprFrame.name);
         node.parent = this._parent;
         node.position = new Vec3(crood.x * GRID_SIZE, crood.y * GRID_SIZE, 0);
@@ -75,47 +77,48 @@ class MapArea {
 }
  
 @ccclass('GameMap')
-export class GameMap extends Component {
+export class GameMap {
     public _data:MapData;
     //当前视野范围里的区块
     private _viewAreas = new Array<MapArea>(VIEW_AREA_COUNT);
     private _currentArea = new Vec2();
     private _touchStartPos = new Vec2();
-    public WorldAssets:SpriteFrame[];
-    public static Instance:GameMap;
 
-    camera:Camera = null;
+    camera:Camera = null; //场景相机
 
-    sceneRoot:Node = null;
+    sceneRoot:Node = null; //场景信息的根节点
 
-    public static init(rootScene:Node, sprRoot, camera:Camera) {
-        var map = sprRoot.addComponent(GameMap);
-        map.sceneRoot = rootScene;
-        map.camera = camera;
-        GameMap.Instance = map;
+    uiNode:Node = null; //用来挂接UI消息
+
+    private static _instance:GameMap;
+    public static get Instance() {
+        if (GameMap._instance == null) {
+            GameMap._instance = new GameMap();
+        }
+        return GameMap._instance;
     }
 
-    start () {
+    public init(rootScene:Node, sprNode:Node, camera:Camera) {
+        this.sceneRoot = rootScene;
+        this.camera = camera;
+        this.uiNode = sprNode;
         this._data = DataManager.MapData;
-        resources.loadDir("scene/spriteFrame/world/style01", SpriteFrame, function (err, assets) {
-            GameMap.Instance.onLoadAssetFinish(assets);
+        var gameMap = this;
+        ResManager.Instance.loadWorldAssets("style01", function () {
+            gameMap.onLoadAssetFinish();
         });
     }
 
-    onLoadAssetFinish(assets) {
-        this.WorldAssets = assets;
-        this.WorldAssets.sort(function(a:SpriteFrame, b:SpriteFrame) {
-            var aN = Number(a.name);
-            var bN = Number(b.name);
-            return aN - bN;
-        });
-        
+    onLoadAssetFinish() {
         //资源加载完毕后允许相机移动
-        this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
-        this.node.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
-        this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        this.uiNode.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
+        this.uiNode.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
+        this.uiNode.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
 
         this.checkLoadFromCamera(true);
+
+        //玩家插入到场景
+        this.playerEnter();
     }
 
     //根据相机当前位置计算要加载和卸载的地图
@@ -218,7 +221,8 @@ export class GameMap extends Component {
         this._touchStartPos = null;
     }
 
-    OnClick(btn: Button) {
-        console.log("on click");
+
+    playerEnter() {
+        var player = new Player(DataManager.PlayerData);
     }
 }
