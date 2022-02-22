@@ -12,7 +12,6 @@ export class Random {
     public static rands() {
         var r = math.pseudoRandom(this._seed);
         this._seed = r * 0x7fffffffffffffff;
-        //console.log("seed", this._seed);
         return r;
     }
 

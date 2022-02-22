@@ -6,7 +6,7 @@ export class ResManager {
 
     public WorldAssets:SpriteFrame[];
 
-    public HeroClassAssets:SpriteFrame[];
+    public HeroClassAssets:Map<string, SpriteFrame> = new Map<string, SpriteFrame>();
 
     private static _instance:ResManager;
     public static get Instance() {
@@ -16,21 +16,34 @@ export class ResManager {
         return ResManager._instance;
     }
 
+    private static assetSortFunction(a:SpriteFrame, b:SpriteFrame) {
+        var aN = Number(a.name);
+        var bN = Number(b.name);
+        return aN - bN;
+    }
+
     public loadWorldAssets(style:string, callback:Function) {
         var resManager = this;
         resources.loadDir("scene/spriteFrame/world/" + style, SpriteFrame, function (err, assets) {
             resManager.WorldAssets = assets;
-            resManager.WorldAssets.sort(function(a:SpriteFrame, b:SpriteFrame) {
-                var aN = Number(a.name);
-                var bN = Number(b.name);
-                return aN - bN;
+            resManager.WorldAssets.sort(ResManager.assetSortFunction);
+            callback();
+        });
+    }
+
+    public loadHeroAssets(callback:Function) {
+        var resManager = this;
+        resources.loadDir("scene/spriteFrame/hero", SpriteFrame, function(err, assets) {
+            assets.forEach(sprFrame => {
+                resManager.HeroClassAssets[sprFrame.name] = sprFrame;
             });
             callback();
         });
     }
 
-    public loadHeroAssets() {
-
+    public getHeroSpr(heroClass:number, heroSex:number, heroRank:number) {
+        var key = Number(heroClass) + "_" + Number(heroSex) + "_" + Number(heroRank);
+        return this.HeroClassAssets[key];
     }
 }
 

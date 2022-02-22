@@ -3,6 +3,7 @@ import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, c
 import { DataManager } from './DataManager';
 import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT } from './MapGenerator';
 import { Player } from './Player';
+import { Random } from './Random';
 import { ResManager } from './ResManager';
 const { ccclass, property } = _decorator;
 
@@ -87,6 +88,8 @@ export class GameMap {
     camera:Camera = null; //场景相机
 
     sceneRoot:Node = null; //场景信息的根节点
+    areaRoot:Node = null;
+    charRoot:Node = null;
 
     uiNode:Node = null; //用来挂接UI消息
 
@@ -100,12 +103,18 @@ export class GameMap {
 
     public init(rootScene:Node, sprNode:Node, camera:Camera) {
         this.sceneRoot = rootScene;
+        this.areaRoot = new Node("Areas");
+        this.areaRoot.parent = rootScene;
+        this.charRoot = new Node("Char");
+        this.charRoot.parent = rootScene;
         this.camera = camera;
         this.uiNode = sprNode;
         this._data = DataManager.MapData;
         var gameMap = this;
         ResManager.Instance.loadWorldAssets("style01", function () {
-            gameMap.onLoadAssetFinish();
+            ResManager.Instance.loadHeroAssets(function () {
+                gameMap.onLoadAssetFinish();
+            });
         });
     }
 
@@ -182,7 +191,7 @@ export class GameMap {
                     if (viewArea == null) { 
                         viewArea = new MapArea();
                         const idx = loadArea.x + loadArea.y * this._data.Size.x;
-                        viewArea.load(this._data.Areas[idx], this.sceneRoot);
+                        viewArea.load(this._data.Areas[idx], this.areaRoot);
                         this._viewAreas[j] = viewArea;
                         break;
                     }
@@ -224,5 +233,10 @@ export class GameMap {
 
     playerEnter() {
         var player = new Player(DataManager.PlayerData);
+        var randRoom = this._data.Rooms[Random.randomRangeInt(0, this._data.Rooms.length)];
+        var enterPos = new Vec2();
+        enterPos.add(randRoom.StartGrid);
+        enterPos.add(randRoom.EnterPos);
+        player.enterScene(enterPos, this.charRoot);
     }
 }

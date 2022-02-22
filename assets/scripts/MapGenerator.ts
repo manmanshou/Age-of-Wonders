@@ -82,6 +82,7 @@ export class Room {
     public SpaceCount:number;               //没有阻挡的格子数量，代表活动空间数量
     public IsNature:boolean;                //是否是自然风格
     public IsIndoor:boolean;                //是否是室内风格
+    public EnterPos:Vec2;                   //插入点
 
     public isBlock(x:number, y:number) {
         if (x < 0 || x >= this.Size.x || y < 0 || y >= this.Size.y) {
@@ -476,6 +477,16 @@ export class MapGenerator {
                 }
             }
         }
+
+        //随机一个空地作为传送过来时的插入点
+        var allWay = new Array<number>();
+        for (var i = 0; i < room.Grids.length; i++) {
+            if (!grid.IsBlock) {
+                allWay.push(i);
+            }
+        }
+        var idx = allWay[Random.randomRangeInt(0, allWay.length)];
+        room.EnterPos = new Vec2(idx % room.Size.x, Math.floor(idx / room.Size.x));
         return room;
     }
 
