@@ -172,11 +172,53 @@ export class GameMap {
             for (var x = centerPos.x - range; x <= centerPos.x + range; x++) {
                 var distX = x - centerPos.x; var distY = y - centerPos.y;
                 var dist = distX * distX + distY * distY;
-                if (dist <= range2) {
-                    this.exploreGrid(new Vec2(x, y));
+                var endPos = new Vec2(x, y);
+                if (dist <= range2 && this.canSee(centerPos, endPos)) {
+                    this.exploreGrid(endPos);
                 }
             }
         }
+    }
+
+    //是否能在起始点看到终点格子
+    public canSee(startPos:Vec2, endPos:Vec2) {
+        var diffX = endPos.x - startPos.x;
+        var diffY = endPos.y - startPos.y;
+        var absX = Math.abs(diffX);
+        var absY = Math.abs(diffY);
+        var stepX = 0; var stepY = 0;
+        if (absX > absY) {
+            if (absX == 0) {
+                return true;
+            }
+            stepX = diffX / absX;
+            stepY = diffY / absX;
+            var x = startPos.x + stepX
+            var y = startPos.y + stepY;
+            for (var i = 0; i < absX - 1; i++) {
+                if (this.Data.isBlock(x, Math.floor(y))) {
+                    return false;
+                }
+                x += stepX;
+                y += stepY;
+            }
+        }else{
+            if (absY == 0) {
+                return true;
+            }
+            stepX = diffX / absY;
+            stepY = diffY / absY;
+            var x = startPos.x + stepX
+            var y = startPos.y + stepY;
+            for (var i = 0; i < absY - 1; i++) {
+                if (this.Data.isBlock(Math.floor(x), y)) {
+                    return false;
+                }
+                x += stepX;
+                y += stepY;
+            }
+        }
+        return true;
     }
 
     exploreGrid(posGrid:Vec2) {
