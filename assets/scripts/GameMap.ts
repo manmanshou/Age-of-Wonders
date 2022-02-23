@@ -1,7 +1,7 @@
 
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
 import { DataManager } from './DataManager';
-import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT } from './MapGenerator';
+import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, FogType, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT } from './MapGenerator';
 import { Player } from './Player';
 import { Random } from './Random';
 import { ResManager } from './ResManager';
@@ -13,12 +13,11 @@ class MapGrid {
     private _sprObject:Node;
     private _sprFog:Node;
     private _data:GridData;
-    private _parent:Node;
+    private _area:MapArea;
 
     createNode(crood:Vec2, frameId:number) {
         var sprFrame = ResManager.Instance.WorldAssets[frameId];
         var node = new Node(sprFrame.name);
-        node.parent = this._parent;
         node.position = new Vec3(crood.x * GRID_SIZE, crood.y * GRID_SIZE, 0);
         var spr = node.addComponent(Sprite);
         spr.spriteFrame = sprFrame;
@@ -28,17 +27,34 @@ class MapGrid {
         return node;
     }
 
-    constructor(data:GridData, parent:Node) {
+    public refreshNode() {
+        if (this._data.FogType == FogType.UnExplored) {
+            if (this._sprFloor != null) {
+                this._sprFloor.destroy();
+                this._sprFloor = null;
+            }
+            if (this._sprObject != null) {
+                this._sprObject.destroy();
+                this._sprObject = null;
+            }
+        }else {
+            if (this._sprFloor == null && this._data.Floor > 0) {
+                this._sprFloor = this.createNode(this._data.Crood, this._data.Floor - 1);
+                this._sprFloor.parent = this._area.LowRoot;
+            }
+            if (this._sprObject == null && this._data.Object > 0) {
+                this._sprObject = this.createNode(this._data.Crood, this._data.Object - 1);
+                this._sprObject.parent = this._area.MidRoot;
+            }
+        }
+    }
+
+    constructor(data:GridData, area:MapArea) {
         if (data == null)
             return;
         this._data = data;
-        this._parent = parent;
-        if (this._sprFloor == null && data.Floor > 0) {
-            this._sprFloor = this.createNode(data.Crood, data.Floor - 1);
-        }
-        if (this._sprObject == null && data.Object > 0) {
-            this._sprObject = this.createNode(data.Crood, data.Object - 1);
-        }
+        this._area = area;
+        this.refreshNode();
     }
 }
 
@@ -46,31 +62,50 @@ class MapGrid {
 class MapArea {
     private _grids: MapGrid[];
     private _data: MapAreaData;
-    private _self: Node;
+    
+    public LowRoot: Node;
+    public MidRoot: Node;
+    public TopRoot: Node;
 
-    public getData() {
-        return this._data;
-    }
-
-    load (data:MapAreaData, parent:Node) {
+    constructor (data:MapAreaData) {
         if (data == null) {
             console.log("load area null");
             return;
         }
-        console.log("load area" + data.AreaCrood.toString());
         this._data = data;
         this._grids = new Array(AREA_GRID_COUNT);
-        this._self = new Node(this._data.AreaCrood.toString());
-        this._self.parent = parent;
+        var areaName = this._data.AreaCrood.toString();
+        console.log("load area" + areaName);
+        this.LowRoot = new Node(areaName);
+        this.LowRoot.parent = GameMap.Instance.SceneLowRoot;
+        this.MidRoot = new Node(areaName);
+        this.MidRoot.parent = GameMap.Instance.SceneMidRoot;
+        this.TopRoot = new Node(areaName);
+        this.TopRoot.parent = GameMap.Instance.SceneTopRoot;
         for (var i = 0; i < AREA_GRID_COUNT; i++) {
-            this._grids[i] = new MapGrid(data.Grids[i], this._self);
+            this._grids[i] = new MapGrid(data.Grids[i], this);
         }
     }
+    
+    public getData() {
+        return this._data;
+    }
 
+    public getID() {
+        return this._data.ID;
+    }
+
+    public refreshNode(posGrid:Vec2) {
+        var x = posGrid.x - this._data.GridCrood.x;
+        var y = posGrid.y - this._data.GridCrood.y;
+        var idx = x + y * GRID_SIZE;
+        this._grids[idx].refreshNode();
+    }
+    
     unload () {
-        if (this._self != null) {
-            this._self.destroy();
-            this._self = null;
+        if (this.LowRoot != null) {
+            this.LowRoot.destroy();
+            this.LowRoot = null;
         }
         this._data = null;
         this._grids = null;
@@ -85,13 +120,15 @@ export class GameMap {
     private _currentArea = new Vec2();
     private _touchStartPos = new Vec2();
 
-    camera:Camera = null; //场景相机
+    public Camera:Camera;      //场景相机
+    
+    private _sceneRoot:Node;     //场景信息的根节点
+    public SceneLowRoot:Node;  //场景最低层
+    public SceneMidRoot:Node;  //场景中间层
+    public SceneTopRoot:Node;  //场景最高层
+    public CharRoot:Node;      //角色层
 
-    sceneRoot:Node = null; //场景信息的根节点
-    areaRoot:Node = null;
-    charRoot:Node = null;
-
-    uiNode:Node = null; //用来挂接UI消息
+    private uiNode:Node;        //用来挂接UI消息
 
     private static _instance:GameMap;
     public static get Instance() {
@@ -101,14 +138,18 @@ export class GameMap {
         return GameMap._instance;
     }
 
-    public init(rootScene:Node, sprNode:Node, camera:Camera) {
-        this.sceneRoot = rootScene;
-        this.areaRoot = new Node("Areas");
-        this.areaRoot.parent = rootScene;
-        this.charRoot = new Node("Char");
-        this.charRoot.parent = rootScene;
-        this.camera = camera;
-        this.uiNode = sprNode;
+    public init(rootScene:Node, uiNode:Node, camera:Camera) {
+        this._sceneRoot = rootScene;
+        this.SceneLowRoot = new Node("Low");
+        this.SceneLowRoot.parent = rootScene;
+        this.SceneMidRoot = new Node("Mid");
+        this.SceneMidRoot.parent = rootScene;
+        this.CharRoot = new Node("Char");
+        this.CharRoot.parent = rootScene;
+        this.SceneTopRoot = new Node("Top");
+        this.SceneTopRoot.parent = rootScene;
+        this.Camera = camera;
+        this.uiNode = uiNode;
         this._data = DataManager.MapData;
         var gameMap = this;
         ResManager.Instance.loadWorldAssets("style01", function () {
@@ -116,6 +157,42 @@ export class GameMap {
                 gameMap.onLoadAssetFinish();
             });
         });
+    }
+
+    public setCameraPos(pos:Vec3) {
+        this.Camera.node.position = pos;
+        this.checkLoadFromCamera(false);
+    }
+
+    public exploreRange(centerPos:Vec2, range:number) {
+        var range2 = range * range;
+        for (var y = centerPos.y - range; y <= centerPos.y + range; y++) {
+            for (var x = centerPos.x - range; x <= centerPos.x + range; x++) {
+                var distX = x - centerPos.x; var distY = y - centerPos.y;
+                var dist = distX * distX + distY * distY;
+                if (dist <= range2) {
+                    this.exploreGrid(new Vec2(x, y));
+                }
+            }
+        }
+    }
+
+    exploreGrid(posGrid:Vec2) {
+        //修改map数据
+        var areaX = Math.floor(posGrid.x / AREA_SIZE_X);
+        var areaY = Math.floor(posGrid.y / AREA_SIZE_Y);
+        math.clamp(areaX, 0, this._data.Size.x - 1);
+        math.clamp(areaY, 0, this._data.Size.y - 1);
+        var areaID = areaX + areaY * this._data.Size.x;
+        var areaData = this._data.Areas[areaID];
+        areaData.onPlayerView(posGrid.x, posGrid.y);
+        //如果在当前显示的区域内则刷新
+        for (var i = 0; i < this._viewAreas.length; i++) {
+            var area = this._viewAreas[i];
+            if (area!= null && area.getID() == areaID) {
+                area.refreshNode(posGrid);
+            }
+        }
     }
 
     onLoadAssetFinish() {
@@ -131,8 +208,8 @@ export class GameMap {
     }
 
     //根据相机当前位置计算要加载和卸载的地图
-    checkLoadFromCamera(isForceLoad:boolean) {
-        var cameraPos = this.camera.node.position;
+    public checkLoadFromCamera(isForceLoad:boolean) {
+        var cameraPos = this.Camera.node.position;
         var centerAreaX = Math.floor(cameraPos.x / (AREA_SIZE_X * GRID_SIZE));
         var centerAreaY = Math.floor(cameraPos.y / (AREA_SIZE_Y * GRID_SIZE));
         math.clamp(centerAreaX, 0, this._data.Size.x - 1);
@@ -189,9 +266,8 @@ export class GameMap {
                 for (var j = 0; j < this._viewAreas.length; j++) {
                     var viewArea = this._viewAreas[j];
                     if (viewArea == null) { 
-                        viewArea = new MapArea();
                         const idx = loadArea.x + loadArea.y * this._data.Size.x;
-                        viewArea.load(this._data.Areas[idx], this.areaRoot);
+                        viewArea = new MapArea(this._data.Areas[idx]);
                         this._viewAreas[j] = viewArea;
                         break;
                     }
@@ -213,14 +289,14 @@ export class GameMap {
         Vec2.subtract(diff, pt, this._touchStartPos);
         var speed = 20;
         diff.multiplyScalar(game.deltaTime * speed);
-        var cameraPos = this.camera.node.position;
+        var cameraPos = this.Camera.node.position;
         //限制相机的位置
         var posX = cameraPos.x - diff.x;
         var posY = cameraPos.y - diff.y;
         var posZ = cameraPos.z;
         if (posX < 0 || posX >= this._data.Size.x * AREA_SIZE_X * GRID_SIZE) posX = cameraPos.x;
         if (posY < 0 || posY >= this._data.Size.y * AREA_SIZE_Y * GRID_SIZE) posY = cameraPos.y;
-        this.camera.node.position = new Vec3(posX, posY, posZ);
+        this.Camera.node.position = new Vec3(posX, posY, posZ);
         this._touchStartPos = pt;
 
         this.checkLoadFromCamera(false);
@@ -230,13 +306,13 @@ export class GameMap {
         this._touchStartPos = null;
     }
 
-
     playerEnter() {
         var player = new Player(DataManager.PlayerData);
         var randRoom = this._data.Rooms[Random.randomRangeInt(0, this._data.Rooms.length)];
         var enterPos = new Vec2();
         enterPos.add(randRoom.StartGrid);
         enterPos.add(randRoom.EnterPos);
-        player.enterScene(enterPos, this.charRoot);
+        player.enterScene(enterPos, this.CharRoot);
+        player.bindCamera(this.Camera.node, 0);
     }
 }

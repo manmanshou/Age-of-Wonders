@@ -1,5 +1,6 @@
 
-import { _decorator, Component, Node, Vec2 } from 'cc';
+import { _decorator, Component, Node, Vec2, Vec3 } from 'cc';
+import { GameMap } from './GameMap';
 import { MapHero } from './MapHero';
 const { ccclass, property } = _decorator;
 
@@ -42,12 +43,14 @@ export class BagData {
 }
 
 export class HeroData {
+    public ID:number;
     public Rank:number;
     public Level:number;
     public Class:number;
     public MaxBagItem:number;
     public Bag:BagData;
     public Name:string;
+    public ViewRange:number;
 }
 
 export class PlayerData {
@@ -57,11 +60,13 @@ export class PlayerData {
         var playerData = new PlayerData();
         playerData.Heros = new Array<HeroData>();
         var heroData =  new HeroData();
+        heroData.ID = 0;
         heroData.Rank = 0;
         heroData.Level = 1;
         heroData.Class = 0;
         heroData.MaxBagItem = 20;
         heroData.Name = "NewHero";
+        heroData.ViewRange = 2;
         playerData.Heros.push(heroData);
         return playerData;
     }
@@ -70,14 +75,16 @@ export class PlayerData {
 export class Player {
     private _data : PlayerData;
 
-    private _heros : Array<MapHero> = new Array<MapHero>();
+    private _heros : Map<number, MapHero>;
+
+    private _cameraNode : Node;
 
     constructor(data:PlayerData) {
         this._data = data;
-
+        this._heros = new Map<number, MapHero>();
         this._data.Heros.forEach(heroData => {
             var hero = new MapHero(heroData);
-            this._heros.push(hero);
+            this._heros.set(heroData.ID, hero);
         });
     }
 
@@ -85,6 +92,12 @@ export class Player {
         this._heros.forEach(hero => {
             hero.enterScene(posGrid, parentNode);
         })
+    }
+
+    public bindCamera(cameraNode:Node, heroID:number) {
+        this._cameraNode = cameraNode;
+        var hero = this._heros.get(heroID);
+        GameMap.Instance.setCameraPos(new Vec3(hero.Node.position.x, hero.Node.position.y, cameraNode.position.z));
     }
 }
 

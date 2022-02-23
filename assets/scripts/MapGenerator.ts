@@ -102,11 +102,13 @@ export class Room {
 }
 
 export class MapAreaData {
+    public ID: number;                      //区域ID
     public AreaCrood: Vec2;                 //区域坐标
     public GridCrood: Vec2;                 //格子坐标
     public Grids: GridData[];               //格子数据
 
-    constructor(areaCrood:Vec2) {
+    constructor(areaCrood:Vec2, id:number) {
+        this.ID = id;
         this.AreaCrood = areaCrood;
         this.GridCrood = new Vec2(areaCrood.x * AREA_SIZE_X, areaCrood.y * AREA_SIZE_Y);
         this.Grids = new Array<GridData>(AREA_GRID_COUNT);
@@ -154,6 +156,13 @@ export class MapAreaData {
             this.Grids[y * AREA_SIZE_X + x] = grid;
         }
         grid.IsBlock = false;
+    }
+
+    public onPlayerView(x:number, y:number) {
+        x -= this.GridCrood.x;
+        y -= this.GridCrood.y;
+        var grid = this.Grids[y * AREA_SIZE_X + x];
+        grid.FogType = FogType.None;
     }
 
     public initGridsSprite(map:MapData) {
@@ -283,7 +292,7 @@ export class MapGenerator {
         mapData.Areas = new Array<MapAreaData>();
         for (var y = 0; y < mapData.Size.y; y++) {
             for (var x = 0; x < mapData.Size.x; x++) {
-                var area = new MapAreaData(new Vec2(x, y));
+                var area = new MapAreaData(new Vec2(x, y), x + y * mapData.Size.x);
                 //遍历房间查找相交的房间并填充
                 mapData.Rooms.forEach(room => {
                     if (!((room.StartGrid.x > area.GridCrood.x + AREA_SIZE_X) || (room.StartGrid.y > area.GridCrood.y + AREA_SIZE_Y) 
