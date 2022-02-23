@@ -77,7 +77,7 @@ export class Player {
 
     private _heros : Map<number, MapHero>;
 
-    private _cameraNode : Node;
+    public CurHero : MapHero;
 
     constructor(data:PlayerData) {
         this._data = data;
@@ -86,18 +86,21 @@ export class Player {
             var hero = new MapHero(heroData);
             this._heros.set(heroData.ID, hero);
         });
+        this.CurHero = this._heros.get(0);
     }
 
     public enterScene(posGrid:Vec2, parentNode:Node) {
         this._heros.forEach(hero => {
             hero.enterScene(posGrid, parentNode);
         })
+        this.setCameraToCurHero();
     }
 
-    public bindCamera(cameraNode:Node, heroID:number) {
-        this._cameraNode = cameraNode;
-        var hero = this._heros.get(heroID);
-        GameMap.Instance.setCameraPos(new Vec3(hero.Node.position.x, hero.Node.position.y, cameraNode.position.z));
+    public setCameraToCurHero() {
+        var hero = this.CurHero;
+        var pos = new Vec2(hero.Node.position.x, hero.Node.position.y);
+        GameMap.Instance.setCameraPos(pos);
+        GameMap.Instance.exploreRange(this.CurHero.PosGrid, this.CurHero.getViewRange());
     }
 }
 

@@ -98,7 +98,7 @@ class MapArea {
     public refreshNode(posGrid:Vec2) {
         var x = posGrid.x - this._data.GridCrood.x;
         var y = posGrid.y - this._data.GridCrood.y;
-        var idx = x + y * GRID_SIZE;
+        var idx = x + y * AREA_SIZE_X;
         this._grids[idx].refreshNode();
     }
     
@@ -114,7 +114,7 @@ class MapArea {
  
 @ccclass('GameMap')
 export class GameMap {
-    public _data:MapData;
+    public Data:MapData;
     //当前视野范围里的区块
     private _viewAreas = new Array<MapArea>(VIEW_AREA_COUNT);
     private _currentArea = new Vec2();
@@ -127,6 +127,8 @@ export class GameMap {
     public SceneMidRoot:Node;  //场景中间层
     public SceneTopRoot:Node;  //场景最高层
     public CharRoot:Node;      //角色层
+
+    public Player:Player;       //角色
 
     private uiNode:Node;        //用来挂接UI消息
 
@@ -150,7 +152,7 @@ export class GameMap {
         this.SceneTopRoot.parent = rootScene;
         this.Camera = camera;
         this.uiNode = uiNode;
-        this._data = DataManager.MapData;
+        this.Data = DataManager.MapData;
         var gameMap = this;
         ResManager.Instance.loadWorldAssets("style01", function () {
             ResManager.Instance.loadHeroAssets(function () {
@@ -159,8 +161,8 @@ export class GameMap {
         });
     }
 
-    public setCameraPos(pos:Vec3) {
-        this.Camera.node.position = pos;
+    public setCameraPos(pos:Vec2) {
+        this.Camera.node.position = new Vec3(pos.x, pos.y, this.Camera.node.position.z);
         this.checkLoadFromCamera(false);
     }
 
@@ -181,10 +183,10 @@ export class GameMap {
         //修改map数据
         var areaX = Math.floor(posGrid.x / AREA_SIZE_X);
         var areaY = Math.floor(posGrid.y / AREA_SIZE_Y);
-        math.clamp(areaX, 0, this._data.Size.x - 1);
-        math.clamp(areaY, 0, this._data.Size.y - 1);
-        var areaID = areaX + areaY * this._data.Size.x;
-        var areaData = this._data.Areas[areaID];
+        math.clamp(areaX, 0, this.Data.Size.x - 1);
+        math.clamp(areaY, 0, this.Data.Size.y - 1);
+        var areaID = areaX + areaY * this.Data.Size.x;
+        var areaData = this.Data.Areas[areaID];
         areaData.onPlayerView(posGrid.x, posGrid.y);
         //如果在当前显示的区域内则刷新
         for (var i = 0; i < this._viewAreas.length; i++) {
@@ -212,8 +214,8 @@ export class GameMap {
         var cameraPos = this.Camera.node.position;
         var centerAreaX = Math.floor(cameraPos.x / (AREA_SIZE_X * GRID_SIZE));
         var centerAreaY = Math.floor(cameraPos.y / (AREA_SIZE_Y * GRID_SIZE));
-        math.clamp(centerAreaX, 0, this._data.Size.x - 1);
-        math.clamp(centerAreaY, 0, this._data.Size.y - 1);
+        math.clamp(centerAreaX, 0, this.Data.Size.x - 1);
+        math.clamp(centerAreaY, 0, this.Data.Size.y - 1);
         if (!isForceLoad && this._currentArea.x == centerAreaX && this._currentArea.y == centerAreaY) {
             return;
         }
@@ -221,7 +223,7 @@ export class GameMap {
         var needLoadAreas = new Array<Vec2>();
         for (var y = centerAreaY - 1; y <= centerAreaY + 1; y++) {
             for (var x = centerAreaX - 1; x <= centerAreaX + 1; x++) {
-                if (x < 0 || x >= this._data.Size.x || y < 0 || y >= this._data.Size.y) {
+                if (x < 0 || x >= this.Data.Size.x || y < 0 || y >= this.Data.Size.y) {
                     continue;
                 }
                 needLoadAreas.push(new Vec2(x, y));
@@ -266,8 +268,8 @@ export class GameMap {
                 for (var j = 0; j < this._viewAreas.length; j++) {
                     var viewArea = this._viewAreas[j];
                     if (viewArea == null) { 
-                        const idx = loadArea.x + loadArea.y * this._data.Size.x;
-                        viewArea = new MapArea(this._data.Areas[idx]);
+                        const idx = loadArea.x + loadArea.y * this.Data.Size.x;
+                        viewArea = new MapArea(this.Data.Areas[idx]);
                         this._viewAreas[j] = viewArea;
                         break;
                     }
@@ -294,8 +296,8 @@ export class GameMap {
         var posX = cameraPos.x - diff.x;
         var posY = cameraPos.y - diff.y;
         var posZ = cameraPos.z;
-        if (posX < 0 || posX >= this._data.Size.x * AREA_SIZE_X * GRID_SIZE) posX = cameraPos.x;
-        if (posY < 0 || posY >= this._data.Size.y * AREA_SIZE_Y * GRID_SIZE) posY = cameraPos.y;
+        if (posX < 0 || posX >= this.Data.Size.x * AREA_SIZE_X * GRID_SIZE) posX = cameraPos.x;
+        if (posY < 0 || posY >= this.Data.Size.y * AREA_SIZE_Y * GRID_SIZE) posY = cameraPos.y;
         this.Camera.node.position = new Vec3(posX, posY, posZ);
         this._touchStartPos = pt;
 
@@ -308,11 +310,11 @@ export class GameMap {
 
     playerEnter() {
         var player = new Player(DataManager.PlayerData);
-        var randRoom = this._data.Rooms[Random.randomRangeInt(0, this._data.Rooms.length)];
+        var randRoom = this.Data.Rooms[Random.randomRangeInt(0, this.Data.Rooms.length)];
         var enterPos = new Vec2();
         enterPos.add(randRoom.StartGrid);
         enterPos.add(randRoom.EnterPos);
         player.enterScene(enterPos, this.CharRoot);
-        player.bindCamera(this.Camera.node, 0);
+        this.Player = player;
     }
 }

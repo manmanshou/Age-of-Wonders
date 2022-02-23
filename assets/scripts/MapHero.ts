@@ -7,7 +7,7 @@ import { ResManager } from './ResManager';
 
 export class MapHero {
     private _data:HeroData;
-    private _posGrid:Vec2;
+    public PosGrid:Vec2;
     public Node:Node; //英雄节点
 
     constructor(data:HeroData) {
@@ -15,20 +15,27 @@ export class MapHero {
     }
 
     public enterScene(posGrid:Vec2, parentNode:Node) {
-        this._posGrid = posGrid;
         if (this.Node == null) {
             var node = new Node(this._data.Name);
             node.parent = parentNode;
             this.Node = node;
+            node.addComponent(Sprite);
         }
+        this.moveTo(posGrid);
+    }
+
+    public moveTo(posGrid:Vec2) {
+        this.PosGrid = posGrid;
         this.Node.position = new Vec3(posGrid.x * GRID_SIZE, posGrid.y * GRID_SIZE, 0);
-        var spr = node.addComponent(Sprite);
+        var spr = this.Node.getComponent(Sprite)
         spr.spriteFrame = ResManager.Instance.getHeroSpr(this._data.Class, 0, this._data.Rank);
         var trans = this.Node.addComponent(UITransform);
         trans.setAnchorPoint(0, 0);
         trans.setContentSize(GRID_SIZE, GRID_SIZE);
-        
-        GameMap.Instance.exploreRange(posGrid, this._data.ViewRange);
+    }
+
+    public getViewRange() {
+        return this._data.ViewRange;
     }
 }
 
