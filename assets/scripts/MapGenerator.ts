@@ -5,14 +5,15 @@ import { Random } from './Random';
 const { ccclass, property } = _decorator;
 
 export const GRID_SIZE: number = 48;        //一个格子边长单位
+export const HALF_GRID_SIZE: number = GRID_SIZE / 2;
 export const AREA_SIZE_X: number = 10;       //一个区块边的格子数量
 export const AREA_SIZE_Y: number = 6;       //一个区块边的格子数量
 export const AREA_GRID_COUNT: number = AREA_SIZE_X * AREA_SIZE_Y;
 export const VIEW_AREA_SIDE: number = 3;   //相机可见范围单边的区域数量
 export const VIEW_AREA_COUNT: number = VIEW_AREA_SIDE * VIEW_AREA_SIDE;   //相机可见范围单边的区域数量
 
-enum WorldSprDefine {
-    None,
+export enum WorldSprDefine {
+    Fog,                //雾
     Pillar1,            //柱子
     PillarCrack1,       //破碎的柱子
     PillarCrack2,       //更加破碎的柱子
@@ -60,10 +61,13 @@ export class GridData {
     public IsBlock:boolean;                 //是否为阻挡
     public Trigger:number;                  //触发类型
 
+    public ViewCount:number;
+
     constructor(crood:Vec2) {
         this.Crood = crood; //绝对格子坐标
         this.FogType = FogType.UnExplored;
         this.IsBlock = true;
+        this.ViewCount = 0;
     }
 }
 
@@ -158,11 +162,22 @@ export class MapAreaData {
         grid.IsBlock = false;
     }
 
-    public onPlayerView(x:number, y:number) {
+    public enterHeroView(x:number, y:number) {
         x -= this.GridCrood.x;
         y -= this.GridCrood.y;
         var grid = this.Grids[y * AREA_SIZE_X + x];
         grid.FogType = FogType.None;
+        grid.ViewCount += 1;
+    }
+
+    public leaveHeroView(x:number, y:number) {
+        x -= this.GridCrood.x;
+        y -= this.GridCrood.y;
+        var grid = this.Grids[y * AREA_SIZE_X + x];
+        grid.ViewCount -= 1;
+        if (grid.ViewCount <= 0) {
+            grid.FogType = FogType.Explored;
+        }
     }
 
     public initGridsSprite(map:MapData) {
@@ -184,37 +199,37 @@ export class MapAreaData {
                 var isEastBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
                 if (isSelfBlock) {
                     if (isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ESWN;
+                        grid.Floor = WorldSprDefine.Wall_ESWN;
                     }else if (isNorthBlock && !isSourthBlock && !isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_N;
+                        grid.Floor = WorldSprDefine.Wall_N;
                     }else if (!isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_S;
+                        grid.Floor = WorldSprDefine.Wall_S;
                     }else if (!isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_W;
+                        grid.Floor = WorldSprDefine.Wall_W;
                     }else if (!isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_E;
+                        grid.Floor = WorldSprDefine.Wall_E;
                     }else if (isNorthBlock && isSourthBlock && !isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_SN;
+                        grid.Floor = WorldSprDefine.Wall_SN;
                     }else if (isNorthBlock && !isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_WN;
+                        grid.Floor = WorldSprDefine.Wall_WN;
                     }else if (isNorthBlock && !isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_EN;
+                        grid.Floor = WorldSprDefine.Wall_EN;
                     }else if (!isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_SW;
+                        grid.Floor = WorldSprDefine.Wall_SW;
                     }else if (!isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ES;
+                        grid.Floor = WorldSprDefine.Wall_ES;
                     }else if (!isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_EW;
+                        grid.Floor = WorldSprDefine.Wall_EW;
                     }else if (isNorthBlock && isSourthBlock && isWestBlock && !isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_SWN;
+                        grid.Floor = WorldSprDefine.Wall_SWN;
                     }else if (!isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ESW;
+                        grid.Floor = WorldSprDefine.Wall_ESW;
                     }else if (isNorthBlock && !isSourthBlock && isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_EWN;
+                        grid.Floor = WorldSprDefine.Wall_EWN;
                     }else if (isNorthBlock && isSourthBlock && !isWestBlock && isEastBlock) {
-                        grid.Object = WorldSprDefine.Wall_ESN;
+                        grid.Floor = WorldSprDefine.Wall_ESN;
                     }else{
-                        grid.Object = WorldSprDefine.IndepWall;
+                        grid.Floor = WorldSprDefine.IndepWall;
                     }
                 }else{
                     grid.Floor = WorldSprDefine.Floor1;

@@ -100,7 +100,6 @@ export class Player {
         var hero = this.CurHero;
         var pos = new Vec2(hero.Node.position.x, hero.Node.position.y);
         GameMap.Instance.setCameraPos(pos);
-        GameMap.Instance.exploreRange(this.CurHero.PosGrid, this.CurHero.getViewRange());
     }
 }
 

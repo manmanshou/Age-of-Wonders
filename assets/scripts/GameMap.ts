@@ -1,7 +1,7 @@
 
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
 import { DataManager } from './DataManager';
-import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, FogType, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT } from './MapGenerator';
+import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, FogType, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT, WorldSprDefine } from './MapGenerator';
 import { Player } from './Player';
 import { Random } from './Random';
 import { ResManager } from './ResManager';
@@ -15,7 +15,8 @@ class MapGrid {
     private _data:GridData;
     private _area:MapArea;
 
-    createNode(crood:Vec2, frameId:number) {
+    createNode(frameId:number) {
+        var crood = this._data.Crood;
         var sprFrame = ResManager.Instance.WorldAssets[frameId];
         var node = new Node(sprFrame.name);
         node.position = new Vec3(crood.x * GRID_SIZE, crood.y * GRID_SIZE, 0);
@@ -37,14 +38,30 @@ class MapGrid {
                 this._sprObject.destroy();
                 this._sprObject = null;
             }
+            if (this._sprFog != null) {
+                this._sprFog.destroy();
+                this._sprFog = null;
+            }
         }else {
             if (this._sprFloor == null && this._data.Floor > 0) {
-                this._sprFloor = this.createNode(this._data.Crood, this._data.Floor - 1);
+                this._sprFloor = this.createNode(this._data.Floor);
                 this._sprFloor.parent = this._area.LowRoot;
             }
             if (this._sprObject == null && this._data.Object > 0) {
-                this._sprObject = this.createNode(this._data.Crood, this._data.Object - 1);
+                this._sprObject = this.createNode(this._data.Object);
                 this._sprObject.parent = this._area.MidRoot;
+            }
+            if (this._data.FogType == FogType.Explored) {
+                if (this._sprFog == null) {
+                    this._sprFog = this.createNode(WorldSprDefine.Fog);
+                    this._sprFog.parent = this._area.TopRoot;
+                }
+                this._sprFog.getComponent(Sprite).color = new Color(255,255,255,150);
+            }else if (this._data.FogType == FogType.None) {
+                if (this._sprFog != null) {
+                    this._sprFog.destroy();
+                    this._sprFog = null;
+                }
             }
         }
     }
@@ -161,23 +178,10 @@ export class GameMap {
         });
     }
 
+    //设置相机的物理位置
     public setCameraPos(pos:Vec2) {
         this.Camera.node.position = new Vec3(pos.x, pos.y, this.Camera.node.position.z);
         this.checkLoadFromCamera(false);
-    }
-
-    public exploreRange(centerPos:Vec2, range:number) {
-        var range2 = range * range;
-        for (var y = centerPos.y - range; y <= centerPos.y + range; y++) {
-            for (var x = centerPos.x - range; x <= centerPos.x + range; x++) {
-                var distX = x - centerPos.x; var distY = y - centerPos.y;
-                var dist = distX * distX + distY * distY;
-                var endPos = new Vec2(x, y);
-                if (dist <= range2 && this.canSee(centerPos, endPos)) {
-                    this.exploreGrid(endPos);
-                }
-            }
-        }
     }
 
     //是否能在起始点看到终点格子
@@ -221,7 +225,7 @@ export class GameMap {
         return true;
     }
 
-    exploreGrid(posGrid:Vec2) {
+    gridEnterRange(posGrid:Vec2) {
         //修改map数据
         var areaX = Math.floor(posGrid.x / AREA_SIZE_X);
         var areaY = Math.floor(posGrid.y / AREA_SIZE_Y);
@@ -229,7 +233,25 @@ export class GameMap {
         math.clamp(areaY, 0, this.Data.Size.y - 1);
         var areaID = areaX + areaY * this.Data.Size.x;
         var areaData = this.Data.Areas[areaID];
-        areaData.onPlayerView(posGrid.x, posGrid.y);
+        areaData.enterHeroView(posGrid.x, posGrid.y);
+        //如果在当前显示的区域内则刷新
+        for (var i = 0; i < this._viewAreas.length; i++) {
+            var area = this._viewAreas[i];
+            if (area!= null && area.getID() == areaID) {
+                area.refreshNode(posGrid);
+            }
+        }
+    }
+
+    gridLeaveRange(posGrid:Vec2) {
+        //修改map数据
+        var areaX = Math.floor(posGrid.x / AREA_SIZE_X);
+        var areaY = Math.floor(posGrid.y / AREA_SIZE_Y);
+        math.clamp(areaX, 0, this.Data.Size.x - 1);
+        math.clamp(areaY, 0, this.Data.Size.y - 1);
+        var areaID = areaX + areaY * this.Data.Size.x;
+        var areaData = this.Data.Areas[areaID];
+        areaData.leaveHeroView(posGrid.x, posGrid.y);
         //如果在当前显示的区域内则刷新
         for (var i = 0; i < this._viewAreas.length; i++) {
             var area = this._viewAreas[i];
