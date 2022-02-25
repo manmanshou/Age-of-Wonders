@@ -124,6 +124,14 @@ class MapArea {
             this.LowRoot.destroy();
             this.LowRoot = null;
         }
+        if (this.MidRoot != null) {
+            this.MidRoot.destroy();
+            this.MidRoot = null;
+        }
+        if (this.TopRoot != null) {
+            this.TopRoot.destroy();
+            this.TopRoot = null;
+        }
         this._data = null;
         this._grids = null;
     }
@@ -149,6 +157,8 @@ export class GameMap {
 
     private uiNode:Node;        //用来挂接UI消息
 
+    private _init:boolean = false;
+
     private static _instance:GameMap;
     public static get Instance() {
         if (GameMap._instance == null) {
@@ -169,13 +179,20 @@ export class GameMap {
         this.SceneTopRoot.parent = rootScene;
         this.Camera = camera;
         this.uiNode = uiNode;
-        this.Data = DataManager.MapData;
+        this.Data = DataManager.Instance.MapData;
         var gameMap = this;
         ResManager.Instance.loadWorldAssets("style01", function () {
             ResManager.Instance.loadHeroAssets(function () {
                 gameMap.onLoadAssetFinish();
+                gameMap._init = true;
             });
         });
+    }
+
+    public onUpdate(deltaTime: number) {
+        if (this._init) {
+            this.Player.setCameraToCurHero();
+        }
     }
 
     //设置相机的物理位置
@@ -373,7 +390,7 @@ export class GameMap {
     }
 
     playerEnter() {
-        var player = new Player(DataManager.PlayerData);
+        var player = new Player(DataManager.Instance.PlayerData);
         var randRoom = this.Data.Rooms[Random.randomRangeInt(0, this.Data.Rooms.length)];
         var enterPos = new Vec2();
         enterPos.add(randRoom.StartGrid);

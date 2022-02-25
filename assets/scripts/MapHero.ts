@@ -1,9 +1,11 @@
 
-import { _decorator, Component, Node, Vec2, Vec3, Sprite, UITransform } from 'cc';
+import { _decorator, Component, Node, Vec2, Vec3, Sprite, UITransform, tween } from 'cc';
 import { GameMap } from './GameMap';
 import { GRID_SIZE, HALF_GRID_SIZE } from './MapGenerator';
 import { HeroData } from './Player';
 import { ResManager } from './ResManager';
+
+const HERO_MOVE_SPEED = GRID_SIZE * 2;
 
 export class MapHero {
     private _data:HeroData;
@@ -31,14 +33,31 @@ export class MapHero {
     }
 
     public moveTo(posGrid:Vec2) {
+        var isFirstMove = false;
         var diffX = 0;
         if (this.PosGrid) {
             diffX = posGrid.x - this.PosGrid.x;
+        }else {
+            isFirstMove = true;
         }
-        this.leaveRange();
-        this.PosGrid = posGrid;
-        this.enterRange();
-        this.Node.position = new Vec3(posGrid.x * GRID_SIZE + HALF_GRID_SIZE, posGrid.y * GRID_SIZE + HALF_GRID_SIZE, 0);
+        var targetPos = new Vec3(posGrid.x * GRID_SIZE + HALF_GRID_SIZE, posGrid.y * GRID_SIZE + HALF_GRID_SIZE, 0);
+        if (isFirstMove) {
+            this.leaveRange();
+            this.PosGrid = posGrid;
+            this.Node.position = targetPos;
+            this.enterRange();
+        }else {
+            var hero = this;
+            tween(this.Node)
+            .to(GRID_SIZE / HERO_MOVE_SPEED, { position: targetPos})
+            .call(() => {
+                hero.leaveRange();
+                hero.PosGrid = posGrid;
+                hero.Node.position = targetPos;    
+                hero.enterRange(); 
+            })
+            .start();
+        }
         //根据移动方向调整人物方向
         if (diffX > 0) {
             this.Node.setScale(-1, 1, 1);

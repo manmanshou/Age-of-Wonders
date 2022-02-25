@@ -93,7 +93,6 @@ export class Player {
         this._heros.forEach(hero => {
             hero.enterScene(posGrid, parentNode);
         })
-        this.setCameraToCurHero();
     }
 
     public setCameraToCurHero() {

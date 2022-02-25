@@ -32,7 +32,6 @@ export class MovePanel extends Component {
 
         var gridPos = new Vec2(x, y);
         GameMap.Instance.Player.CurHero.moveTo(gridPos); 
-        GameMap.Instance.Player.setCameraToCurHero();
     }
 
     onMoveUp() {

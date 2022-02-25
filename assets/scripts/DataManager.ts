@@ -4,16 +4,24 @@ import { MapData, MapGenerator } from './MapGenerator';
 import { PlayerData } from './Player';
 
 export class DataManager {
-    public static MapData: MapData;
-
-    public static PlayerData: PlayerData;
-
-    public static loadMap() {
-        console.log("start map loading...");
-        DataManager.MapData = MapGenerator.genMap(new Vec2(3,3), 12, 811);
+    private static _instance:DataManager;
+    public static get Instance() {
+        if (DataManager._instance == null) {
+            DataManager._instance = new DataManager();
+        }
+        return DataManager._instance;
     }
 
-    public static loadPlayer() {
+    public MapData: MapData;
+
+    public PlayerData: PlayerData;
+
+    public newMap() {
+        console.log("generate new map...");
+        this.MapData = MapGenerator.genMap(new Vec2(3,3), 12, 811);
+    }
+
+    public newPlayer() {
         this.PlayerData = PlayerData.New();
     }
 }

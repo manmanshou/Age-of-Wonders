@@ -17,11 +17,15 @@ export class GameStart extends Component {
     camera:Camera = null;
 
     start () {
-        DataManager.loadMap();
+        DataManager.Instance.newMap();
 
-        DataManager.loadPlayer();
+        DataManager.Instance.newPlayer();
 
         GameMap.Instance.init(this.sceneRoot, this.spriteRoot, this.camera);
+    }
+
+    update (deltaTime: number) {
+        GameMap.Instance.onUpdate(deltaTime);
     }
 }
 
