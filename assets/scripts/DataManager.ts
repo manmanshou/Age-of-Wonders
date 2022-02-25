@@ -18,7 +18,7 @@ export class DataManager {
 
     public newMap() {
         console.log("generate new map...");
-        this.MapData = MapGenerator.genMap(new Vec2(3,3), 12, 811);
+        this.MapData = MapGenerator.genMap(new Vec2(3,3), 12, 11);
     }
 
     public newPlayer() {
