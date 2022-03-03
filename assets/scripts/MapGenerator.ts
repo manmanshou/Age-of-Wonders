@@ -190,13 +190,13 @@ export class MapAreaData {
                 }
                 var isSelfBlock = grid.IsBlock;
                 var x = grid.Crood.x; var y = grid.Crood.y + 1;
-                var isNorthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                var isNorthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isStaticBlock(x, y);
                 x = grid.Crood.x; y = grid.Crood.y - 1;
-                var isSourthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                var isSourthBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isStaticBlock(x, y);
                 x = grid.Crood.x - 1; y = grid.Crood.y;
-                var isWestBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                var isWestBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isStaticBlock(x, y);
                 x = grid.Crood.x + 1; y = grid.Crood.y;
-                var isEastBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isBlock(x, y);
+                var isEastBlock = this.isInArea(x, y) ? this.isBlock(x, y) : map.isStaticBlock(x, y);
                 if (isSelfBlock) {
                     if (isNorthBlock && isSourthBlock && isWestBlock && isEastBlock) {
                         grid.Floor = WorldSprDefine.Wall_ESWN;
@@ -246,8 +246,9 @@ export class MapData {
     public RoomConn: Array<Array<Array<number>>>;   //房间连通关系
     public Rooms: Array<Room>;
     public RandSeed:number;
+    public StaticBlocks: Array<boolean>;     //静态阻挡图:除去动态阻挡的阻挡图，true表示阻挡
 
-    public isBlock(x:number, y:number) {
+    public isStaticBlock(x:number, y:number) {
         if (x < 0 || y < 0) {
             return true;
         }
@@ -260,7 +261,7 @@ export class MapData {
         return area.isBlock(x, y);
     }
 
-    public removeBlock(x:number, y:number) {
+    public removeStaticBlock(x:number, y:number) {
         if (x < 0 || y < 0) {
             return true;
         }
@@ -370,43 +371,54 @@ export class MapGenerator {
             if (way1.Location == RoomWayLocation.East || way1.Location == RoomWayLocation.West) {
                 for (var x = startX + 1; x <= midX; x++) {
                     if (notNeedFlip) {
-                        mapData.removeBlock(x, startY);
+                        mapData.removeStaticBlock(x, startY);
                     }else{
-                        mapData.removeBlock(x, endY);
+                        mapData.removeStaticBlock(x, endY);
                     } 
                 }
                 for (var y = startY + 1; y <= endY; y++) {
-                    mapData.removeBlock(midX, y);
+                    mapData.removeStaticBlock(midX, y);
                 }
                 for (var x = midX; x <= endX - 1; x++) {
                     if (notNeedFlip) {
-                        mapData.removeBlock(x, endY);
+                        mapData.removeStaticBlock(x, endY);
                     }else{
-                        mapData.removeBlock(x, startY);
+                        mapData.removeStaticBlock(x, startY);
                     }
                 }
             }else{
                 for (var y = startY + 1; y <= midY; y++) {
                     if (notNeedFlip) {
-                        mapData.removeBlock(startX, y);
+                        mapData.removeStaticBlock(startX, y);
                     }
                     else {
-                        mapData.removeBlock(endX, y);    
+                        mapData.removeStaticBlock(endX, y);    
                     }
                 }
                 for (var x = startX + 1; x <= endX; x++) {
-                    mapData.removeBlock(x, midY);
+                    mapData.removeStaticBlock(x, midY);
                 }
                 for (var y = midY; y <= endY - 1; y++) {
                     if (notNeedFlip) {
-                        mapData.removeBlock(endX, y);
+                        mapData.removeStaticBlock(endX, y);
                     }
                     else {
-                        mapData.removeBlock(startX, y);  
+                        mapData.removeStaticBlock(startX, y);  
                     }
                 }
             }
         });
+
+        //生成静态阻挡图
+        mapData.StaticBlocks = new Array();
+        var totalXGrid = mapData.Size.x * AREA_SIZE_X;
+        var totalYGrid = mapData.Size.y * AREA_SIZE_Y;
+        for (var y = 0; y < totalYGrid; y++) {
+            for (var x = 0; x < totalXGrid; x++){
+                var isBlock = mapData.isStaticBlock(x, y);
+                mapData.StaticBlocks.push(isBlock);
+            }
+        }
 
         //铺设基础图素（墙和空地的地板）
         mapData.Areas.forEach(area => {

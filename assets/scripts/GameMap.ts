@@ -2,6 +2,7 @@
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
 import { DataManager } from './DataManager';
 import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, FogType, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT, WorldSprDefine } from './MapGenerator';
+import { MapObject } from './MapObject';
 import { Player } from './Player';
 import { Random } from './Random';
 import { ResManager } from './ResManager';
@@ -147,17 +148,21 @@ export class GameMap {
 
     public Camera:Camera;      //场景相机
     
-    private _sceneRoot:Node;     //场景信息的根节点
+    private _sceneRoot:Node;   //场景信息的根节点
     public SceneLowRoot:Node;  //场景最低层
     public SceneMidRoot:Node;  //场景中间层
     public SceneTopRoot:Node;  //场景最高层
     public CharRoot:Node;      //角色层
 
-    public Player:Player;       //角色
+    public Player:Player;      //玩家对象，包含多个场景中的英雄对象
+
+    public Objects:Map<number, MapObject>;  //交互物体
 
     private uiNode:Node;        //用来挂接UI消息
 
     private _init:boolean = false;
+
+    private _dynamicBlocks:Array<number>;  //静态阻挡和动态阻挡的合集
 
     private static _instance:GameMap;
     public static get Instance() {
@@ -166,6 +171,8 @@ export class GameMap {
         }
         return GameMap._instance;
     }
+
+    private _idGen:number = 1;
 
     public init(rootScene:Node, uiNode:Node, camera:Camera) {
         this._sceneRoot = rootScene;
@@ -180,11 +187,23 @@ export class GameMap {
         this.Camera = camera;
         this.uiNode = uiNode;
         this.Data = DataManager.Instance.MapData;
+        this.Objects = new Map<number, MapObject>();
+        //把静态阻挡作为基础克隆到动态阻挡上
+        this._dynamicBlocks = new Array();
+        for (var i = 0; i < this.Data.StaticBlocks.length; i++) {
+            if (this.Data.StaticBlocks[i]) {
+                this._dynamicBlocks.push(1);
+            }else {
+                this._dynamicBlocks.push(0);
+            }
+        }
         var gameMap = this;
         ResManager.Instance.loadWorldAssets("style01", function () {
             ResManager.Instance.loadHeroAssets(function () {
-                gameMap.onLoadAssetFinish();
-                gameMap._init = true;
+                ResManager.Instance.loadMapObjectAssets(function () {
+                    gameMap.onLoadAssetFinish();
+                    gameMap._init = true;    
+                });
             });
         });
     }
@@ -201,7 +220,15 @@ export class GameMap {
         this.checkLoadFromCamera(false);
     }
 
-    //是否能在起始点看到终点格子
+    public isBlock(pos:Vec2) {
+        return this._dynamicBlocks[pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X];
+    }
+
+    generateID() {
+        return this._idGen++;
+    }
+
+    //是否能站在起始格子看到终点格子
     public canSee(startPos:Vec2, endPos:Vec2) {
         var diffX = endPos.x - startPos.x;
         var diffY = endPos.y - startPos.y;
@@ -217,7 +244,7 @@ export class GameMap {
             var x = startPos.x + stepX
             var y = startPos.y + stepY;
             for (var i = 0; i < absX - 1; i++) {
-                if (this.Data.isBlock(x, Math.floor(y))) {
+                if (this.Data.isStaticBlock(x, Math.floor(y))) {
                     return false;
                 }
                 x += stepX;
@@ -232,7 +259,7 @@ export class GameMap {
             var x = startPos.x + stepX
             var y = startPos.y + stepY;
             for (var i = 0; i < absY - 1; i++) {
-                if (this.Data.isBlock(Math.floor(x), y)) {
+                if (this.Data.isStaticBlock(Math.floor(x), y)) {
                     return false;
                 }
                 x += stepX;
@@ -291,7 +318,7 @@ export class GameMap {
     }
 
     //根据相机当前位置计算要加载和卸载的地图
-    public checkLoadFromCamera(isForceLoad:boolean) {
+    checkLoadFromCamera(isForceLoad:boolean) {
         var cameraPos = this.Camera.node.position;
         var centerAreaX = Math.floor(cameraPos.x / (AREA_SIZE_X * GRID_SIZE));
         var centerAreaY = Math.floor(cameraPos.y / (AREA_SIZE_Y * GRID_SIZE));
@@ -397,5 +424,14 @@ export class GameMap {
         enterPos.add(randRoom.EnterPos);
         player.enterScene(enterPos, this.CharRoot);
         this.Player = player;
+
+        var id = this.generateID();
+        var chest = MapObject.createChest(id, this.SceneMidRoot, enterPos)
+        this.Objects.set(id, chest);
+    }
+    
+    //根据生成好的地图，随机散布资源（桶、棺材、箱子）
+    genMapObject() {
+
     }
 }

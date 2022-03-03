@@ -26,7 +26,7 @@ export class MovePanel extends Component {
     }
 
     onMove(x:number, y:number) {
-        if (GameMap.Instance.Data.isBlock(x, y)) {
+        if (GameMap.Instance.Data.isStaticBlock(x, y)) {
             return;
         }
 
