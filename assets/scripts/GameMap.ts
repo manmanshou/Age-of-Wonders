@@ -3,6 +3,7 @@ import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, c
 import { DataManager } from './DataManager';
 import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, FogType, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT, WorldSprDefine } from './MapGenerator';
 import { MapObject } from './MapObject';
+import { JPS, JPSCheckTag, JPSNode } from './PathFind/JPS';
 import { Player } from './Player';
 import { Random } from './Random';
 import { ResManager } from './ResManager';
@@ -167,7 +168,9 @@ export class GameMap {
 
     private _init:boolean = false;
 
-    private _dynamicBlocks:Array<number>;  //静态阻挡和动态阻挡的合集
+    private _jpsNodes:Array<JPSNode<any>>; //寻路节点图，静态阻挡和动态阻挡的合集
+
+    private _jpsPathFinder:JPS<JPSNode<any>, any>;
 
     private static _instance:GameMap;
     public static get Instance() {
@@ -195,13 +198,19 @@ export class GameMap {
         this.Data = DataManager.Instance.MapData;
         this.Objects = new Map<number, MapObject>();
         //把静态阻挡作为基础克隆到动态阻挡上
-        this._dynamicBlocks = new Array();
+        this._jpsPathFinder = new JPS();
+        this._jpsNodes = new Array();
+        var gridCountX = this.Data.Size.x * AREA_SIZE_X;
         for (var i = 0; i < this.Data.StaticBlocks.length; i++) {
+            var jpsNode = new JPSNode<any>();
+            jpsNode.corde = new Vec2(Math.floor(i % gridCountX), Math.floor(i / gridCountX));
+            jpsNode.myIndex = i;
             if (this.Data.StaticBlocks[i]) {
-                this._dynamicBlocks.push(1);
+                jpsNode.myTag = new JPSCheckTag(1);
             }else {
-                this._dynamicBlocks.push(0);
+                jpsNode.myTag = new JPSCheckTag(0);
             }
+            this._jpsNodes.push(jpsNode);
         }
         var gameMap = this;
         ResManager.Instance.loadWorldAssets("style01", function () {
@@ -228,17 +237,17 @@ export class GameMap {
 
     public hasBlock(pos:Vec2) {
         var idx = pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X;
-        return this._dynamicBlocks[idx] > 0;
+        return !this._jpsNodes[idx].myTag.isGood();
     }
 
     public addBlock(pos:Vec2) {
         var idx = pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X;
-        this._dynamicBlocks[idx]++;
+        this._jpsNodes[idx].myTag.tag++;
     }
 
     public removeBlock(pos:Vec2) {
         var idx = pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X;
-        this._dynamicBlocks[idx]--;
+        this._jpsNodes[idx].myTag.tag--;
     }
 
     public getMapObject(pos:Vec2) {
@@ -471,8 +480,24 @@ export class GameMap {
             ContextMenuPanel.Instance.show(uiWorldPos, false, true);
             this.setSelect(gridPos, true);
         }else if (!grid.IsBlock) {
-            ContextMenuPanel.Instance.show(uiWorldPos, true, false);
+            var path = this.findPath(this.Player.CurHero.PosGrid, gridPos);
+            if (path.length > 0) {
+                ContextMenuPanel.Instance.show(uiWorldPos, true, false);
+                this.showPath(path);
+            }
         }
+    }
+
+    private showPath(path:Array<JPSNode<any>>) {
+
+    }
+
+    private findPath(posStart:Vec2, posEnd:Vec2) {
+        var startNodeIdx = posStart.x + posStart.y * this.Data.Size.x * AREA_SIZE_X;
+        var startNode = this._jpsNodes[startNodeIdx];
+        var endNodeIdx = posEnd.x + posEnd.y * this.Data.Size.x * AREA_SIZE_X;
+        var endNode = this._jpsNodes[endNodeIdx];
+        return this._jpsPathFinder.findPath(startNode, endNode, this._jpsNodes, this.Data.Size.x * AREA_SIZE_X, this.Data.Size.y * AREA_SIZE_Y);
     }
 
     private onTouchMove(event:EventTouch) {
