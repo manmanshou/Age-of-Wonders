@@ -1,5 +1,5 @@
 
-import { _decorator, Component, Node, SpriteFrame, resources } from 'cc';
+import { _decorator, Component, Node, SpriteFrame, resources, loader, assetManager } from 'cc';
 const { ccclass, property } = _decorator;
 
 export class ResManager {

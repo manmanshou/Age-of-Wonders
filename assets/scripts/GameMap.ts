@@ -6,6 +6,8 @@ import { MapObject } from './MapObject';
 import { Player } from './Player';
 import { Random } from './Random';
 import { ResManager } from './ResManager';
+import { ContextMenuPanel } from './UI/ContextMenuPanel';
+import { MovePanel } from './UI/MovePanel';
 const { ccclass, property } = _decorator;
 
 class MapGrid {
@@ -23,7 +25,7 @@ class MapGrid {
         node.position = new Vec3(crood.x * GRID_SIZE, crood.y * GRID_SIZE, 0);
         var spr = node.addComponent(Sprite);
         spr.spriteFrame = sprFrame;
-        var trans = node.addComponent(UITransform);
+        var trans = node.getComponent(UITransform);
         trans.setAnchorPoint(0, 0);
         trans.setContentSize(GRID_SIZE, GRID_SIZE);
         return node;
@@ -147,6 +149,7 @@ export class GameMap {
     private _touchStartPos = new Vec2();
 
     public Camera:Camera;      //场景相机
+    public UICamera:Camera;    //UI相机
     
     private _sceneRoot:Node;   //场景信息的根节点
     public SceneLowRoot:Node;  //场景最低层
@@ -159,6 +162,8 @@ export class GameMap {
     public Objects:Map<number, MapObject>;  //交互物体
 
     private uiNode:Node;        //用来挂接UI消息
+
+    private selectNode:Node;    //显示是否选中
 
     private _init:boolean = false;
 
@@ -174,7 +179,7 @@ export class GameMap {
 
     private _idGen:number = 1;
 
-    public init(rootScene:Node, uiNode:Node, camera:Camera) {
+    public init(rootScene:Node, uiNode:Node, camera:Camera, uiCamera:Camera) {
         this._sceneRoot = rootScene;
         this.SceneLowRoot = new Node("Low");
         this.SceneLowRoot.parent = rootScene;
@@ -185,7 +190,8 @@ export class GameMap {
         this.SceneTopRoot = new Node("Top");
         this.SceneTopRoot.parent = rootScene;
         this.Camera = camera;
-        this.uiNode = uiNode;
+        this.UICamera = uiCamera;
+        this.uiNode = uiCamera.node.parent;
         this.Data = DataManager.Instance.MapData;
         this.Objects = new Map<number, MapObject>();
         //把静态阻挡作为基础克隆到动态阻挡上
@@ -220,11 +226,50 @@ export class GameMap {
         this.checkLoadFromCamera(false);
     }
 
-    public isBlock(pos:Vec2) {
-        return this._dynamicBlocks[pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X];
+    public hasBlock(pos:Vec2) {
+        var idx = pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X;
+        return this._dynamicBlocks[idx] > 0;
     }
 
-    generateID() {
+    public addBlock(pos:Vec2) {
+        var idx = pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X;
+        this._dynamicBlocks[idx]++;
+    }
+
+    public removeBlock(pos:Vec2) {
+        var idx = pos.x + pos.y * this.Data.Size.x * AREA_SIZE_X;
+        this._dynamicBlocks[idx]--;
+    }
+
+    public getMapObject(pos:Vec2) {
+        for (var v of this.Objects.values()) {
+            if (v.PosGrid.strictEquals(pos)) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    public setSelect(pos:Vec2, isShow:boolean) {
+        if (this.selectNode == undefined) {
+            var node = new Node("Select");
+            var spr = node.addComponent(Sprite);
+            var trans = node.getComponent(UITransform);
+            node.parent = this.SceneTopRoot;
+            node.position = new Vec3(pos.x * GRID_SIZE, pos.y * GRID_SIZE, 0);
+            this.selectNode = node;
+            resources.load("ui/grid/spriteFrame", SpriteFrame, function(err, asset) {
+                spr.spriteFrame = asset;
+                trans.setAnchorPoint(0, 0);
+                trans.setContentSize(GRID_SIZE, GRID_SIZE);
+            });
+        }else {
+            this.selectNode.position = new Vec3(pos.x * GRID_SIZE, pos.y * GRID_SIZE, 0);
+        }
+        this.selectNode.active = isShow;
+    }
+
+    private generateID() {
         return this._idGen++;
     }
 
@@ -269,7 +314,7 @@ export class GameMap {
         return true;
     }
 
-    gridEnterRange(posGrid:Vec2) {
+    public gridEnterRange(posGrid:Vec2) {
         //修改map数据
         var areaX = Math.floor(posGrid.x / AREA_SIZE_X);
         var areaY = Math.floor(posGrid.y / AREA_SIZE_Y);
@@ -287,7 +332,7 @@ export class GameMap {
         }
     }
 
-    gridLeaveRange(posGrid:Vec2) {
+    public gridLeaveRange(posGrid:Vec2) {
         //修改map数据
         var areaX = Math.floor(posGrid.x / AREA_SIZE_X);
         var areaY = Math.floor(posGrid.y / AREA_SIZE_Y);
@@ -305,7 +350,11 @@ export class GameMap {
         }
     }
 
-    onLoadAssetFinish() {
+    public startMove() {
+
+    }
+
+    private onLoadAssetFinish() {
         //资源加载完毕后允许相机移动
         this.uiNode.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.uiNode.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
@@ -318,7 +367,7 @@ export class GameMap {
     }
 
     //根据相机当前位置计算要加载和卸载的地图
-    checkLoadFromCamera(isForceLoad:boolean) {
+    private checkLoadFromCamera(isForceLoad:boolean) {
         var cameraPos = this.Camera.node.position;
         var centerAreaX = Math.floor(cameraPos.x / (AREA_SIZE_X * GRID_SIZE));
         var centerAreaY = Math.floor(cameraPos.y / (AREA_SIZE_Y * GRID_SIZE));
@@ -389,11 +438,44 @@ export class GameMap {
         this._currentArea.y = centerAreaY;
     }
 
-    onTouchStart(event:EventTouch) {
-        this._touchStartPos = event.getLocation();
+    private onTouchStart(event:EventTouch) {
+        this._touchStartPos = event.getLocation(); //获取点击位置的屏幕坐标
+        const canvasPos = new Vec2(800, 450);
+        console.log("canvasSize" + canvasPos);
+        var screenPos = new Vec3(this._touchStartPos.x, this._touchStartPos.y, 0);
+        var worldPos = new Vec3();
+        this.Camera.screenToWorld(screenPos, worldPos);
+        var gridX = Math.floor((worldPos.x - canvasPos.x) / GRID_SIZE);
+        var gridY = Math.floor((worldPos.y - canvasPos.y) / GRID_SIZE);
+
+        ContextMenuPanel.Instance.init();
+        this.setSelect(Vec2.ZERO, false);
+
+        var grid = this.Data.getGrid(gridX, gridY);
+        if (grid == undefined) {
+            return;
+        }
+        if (grid.FogType == FogType.UnExplored) {
+            return;
+        }
+        var gridPos = new Vec2(gridX, gridY);
+
+        var gridWorldPos = new Vec3(gridX * GRID_SIZE + canvasPos.x + GRID_SIZE / 2, gridY * GRID_SIZE + canvasPos.y, worldPos.z);
+        var gridScreenPos = new Vec3();
+        this.Camera.worldToScreen(gridWorldPos, gridScreenPos);
+        var uiWorldPos = new Vec3();
+        this.UICamera.screenToWorld(gridScreenPos, uiWorldPos);
+
+        var obj = this.getMapObject(gridPos);
+        if (obj != undefined) {
+            ContextMenuPanel.Instance.show(uiWorldPos, false, true);
+            this.setSelect(gridPos, true);
+        }else if (!grid.IsBlock) {
+            ContextMenuPanel.Instance.show(uiWorldPos, true, false);
+        }
     }
 
-    onTouchMove(event:EventTouch) {
+    private onTouchMove(event:EventTouch) {
         var diff = new Vec2(0, 0);
         var pt = event.getLocation();
         Vec2.subtract(diff, pt, this._touchStartPos);
@@ -412,11 +494,11 @@ export class GameMap {
         this.checkLoadFromCamera(false);
     }
 
-    onTouchEnd(event:EventTouch) {
+    private onTouchEnd(event:EventTouch) {
         this._touchStartPos = null;
     }
 
-    playerEnter() {
+    private playerEnter() {
         var player = new Player(DataManager.Instance.PlayerData);
         var randRoom = this.Data.Rooms[Random.randomRangeInt(0, this.Data.Rooms.length)];
         var enterPos = new Vec2();
@@ -431,7 +513,7 @@ export class GameMap {
     }
     
     //根据生成好的地图，随机散布资源（桶、棺材、箱子）
-    genMapObject() {
+    private genMapObject() {
 
     }
 }

@@ -4,7 +4,7 @@ import { PrimGenerator, RoomWayLocation } from './PrimGenerator';
 import { Random } from './Random';
 const { ccclass, property } = _decorator;
 
-export const GRID_SIZE: number = 48;        //一个格子边长单位
+export const GRID_SIZE: number = 80;        //一个格子边长单位
 export const HALF_GRID_SIZE: number = GRID_SIZE / 2;
 export const AREA_SIZE_X: number = 10;       //一个区块边的格子数量
 export const AREA_SIZE_Y: number = 6;       //一个区块边的格子数量
@@ -162,6 +162,17 @@ export class MapAreaData {
         grid.IsBlock = false;
     }
 
+    public getGrid(x:number, y:number):GridData {
+        x -= this.GridCrood.x;
+        y -= this.GridCrood.y;
+        var grid = this.Grids[y * AREA_SIZE_X + x];
+        if (grid == undefined) {
+            grid = new GridData(new Vec2(x + this.GridCrood.x, y + this.GridCrood.y));
+            this.Grids[y * AREA_SIZE_X + x] = grid;
+        }
+        return grid;
+    }
+
     public enterHeroView(x:number, y:number) {
         x -= this.GridCrood.x;
         y -= this.GridCrood.y;
@@ -272,6 +283,19 @@ export class MapData {
         }
         var area = this.Areas[areaY * this.Size.x + areaX];
         area.removeBlock(x, y);
+    }
+
+    public getGrid(x:number, y:number):GridData {
+        if (x < 0 || y < 0) {
+            return undefined;
+        }
+        var areaX = Math.floor(x / AREA_SIZE_X);
+        var areaY = Math.floor(y / AREA_SIZE_Y);
+        if (areaX < 0 || areaX >= this.Size.x || areaY < 0 || areaY >= this.Size.y) {
+            return undefined;
+        }
+        var area = this.Areas[areaY * this.Size.x + areaX];
+        return area.getGrid(x, y);
     }
 }
 

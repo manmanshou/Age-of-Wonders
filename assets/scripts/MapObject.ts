@@ -1,5 +1,6 @@
 
 import { _decorator, Node, Vec2, Sprite, UITransform, Vec3 } from 'cc';
+import { GameMap } from './GameMap';
 import { GRID_SIZE } from './MapGenerator';
 import { ResManager } from './ResManager';
 const { ccclass, property } = _decorator;
@@ -32,7 +33,7 @@ export class MapObject {
         this.ID = id;
     }
 
-    createNode(parentNode:Node, posGrid:Vec2) {
+    private createNode(parentNode:Node, posGrid:Vec2) {
         var node = new Node(this.Data.Type.toString());
         node.parent = parentNode;
         var spr = node.addComponent(Sprite);
@@ -42,13 +43,46 @@ export class MapObject {
         trans.setContentSize(GRID_SIZE, GRID_SIZE);
         node.position = new Vec3(posGrid.x * GRID_SIZE, posGrid.y * GRID_SIZE, 0);
         this.Node = node;
+        this.PosGrid = posGrid;
+    }
+
+    public onInit() {
+
+    }
+
+    public onPick() {
+        return false;
     }
 
     public static createChest(id:number, parentNode:Node, posGrid:Vec2) {
-        var data = new MapObjectData(MapObjectType.Chest1, 0);
-        var obj = new MapObject(id, data);
+        var obj = new MapChest(id);
         obj.createNode(parentNode, posGrid);
+        obj.onInit();
         return obj;
+    }
+}
+
+export class MapChest extends MapObject {
+    constructor(id:number) {
+        var data = new MapObjectData(MapObjectType.Chest1, 0);
+        super(id, data);
+    }
+
+    public onInit() {
+        GameMap.Instance.addBlock(this.PosGrid);
+    }
+
+    public onPick() {
+        if (this.Data.State != 0) {
+            return false;
+        }
+        this.Data.State = 1;
+        var spr = this.Node.getComponent(Sprite);
+        spr.spriteFrame = ResManager.Instance.getMapObjectSpr(this.Data.Type, this.Data.State);
+        var trans = this.Node.getComponent(UITransform);
+        trans.setAnchorPoint(0, 0);
+        trans.setContentSize(GRID_SIZE, GRID_SIZE);
+        return true;
     }
 }
 

@@ -29,10 +29,10 @@ export class MapHero {
             trans.setAnchorPoint(0.5, 0.5);
             trans.setContentSize(GRID_SIZE, GRID_SIZE);
         }
-        this.moveTo(posGrid);
+        this.moveTo(posGrid, null);
     }
 
-    public moveTo(posGrid:Vec2) {
+    public moveTo(posGrid:Vec2, onMoveDone:Function) {
         var isFirstMove = false;
         var diffX = 0;
         if (this.PosGrid) {
@@ -55,6 +55,9 @@ export class MapHero {
                 hero.PosGrid = posGrid;
                 hero.Node.position = targetPos;    
                 hero.enterRange(); 
+                if (onMoveDone) {
+                    onMoveDone();
+                }
             })
             .start();
         }
