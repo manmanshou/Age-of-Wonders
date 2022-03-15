@@ -447,7 +447,6 @@ export class GameMap {
     private onTouchStart(event:EventTouch) {
         this._touchStartPos = event.getLocation(); //获取点击位置的屏幕坐标
         const canvasPos = new Vec2(800, 450);
-        console.log("canvasSize" + canvasPos);
         var screenPos = new Vec3(this._touchStartPos.x, this._touchStartPos.y, 0);
         var worldPos = new Vec3();
         this.Camera.screenToWorld(screenPos, worldPos);
@@ -487,6 +486,8 @@ export class GameMap {
                     this._mapPath.destory();
                 }
                 this._mapPath = new MapPath(path);
+            }else{
+                console.log("can not found path" + this.Player.CurHero.PosGrid, gridPos);
             }
         }
     }

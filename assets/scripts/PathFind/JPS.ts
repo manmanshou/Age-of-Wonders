@@ -56,6 +56,9 @@ export class JPSNode<DATA> {
         this.currentDir = JPSNode.JPS_DIR.NONE;
         this.isJump = false;
         this.visitCount = 0;
+        this.f = 0;
+        this.g = 0;
+        this.h = 0;
     }
 
     public hasParent(): boolean {
@@ -91,6 +94,8 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
     }
 
     findPath(start: T, end: T, all: Array<T>, w: number, h: number): Array<T> {
+        this.openSet = new Array();
+        this.closeSet = new Array();
         this.startPoint = start;
         this.endPoint = end;
         this.allPoint = all;
