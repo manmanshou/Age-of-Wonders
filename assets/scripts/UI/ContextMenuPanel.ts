@@ -38,8 +38,15 @@ export class ContextMenuPanel extends Component {
         }
     }
 
+    public hide() {
+        this.node.active = false;
+        this.BtnMoveTo.node.active = false;
+        this.BtnPick.node.active = false;
+    }
+
     private onMoveTo() {
         GameMap.Instance.startMove();
+        this.hide();
     }
 }
 

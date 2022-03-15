@@ -2,6 +2,8 @@
 import { _decorator, Component, Node, Vec2, Vec3, Sprite, UITransform, tween } from 'cc';
 import { GameMap } from './GameMap';
 import { GRID_SIZE, HALF_GRID_SIZE } from './MapGenerator';
+import { MapPath } from './MapPath';
+import { JPSNode } from './PathFind/JPS';
 import { HeroData } from './Player';
 import { ResManager } from './ResManager';
 
@@ -12,6 +14,9 @@ export class MapHero {
     public PosGrid:Vec2;
     public Node:Node; //英雄节点
     private _rangeOfGrids:Array<Vec2>;
+    private _pathIdx:number;
+    private _way:Array<JPSNode<any>>;
+    private _movePathCallback:Function;
 
     constructor(data:HeroData) {
         this._data = data;
@@ -69,14 +74,33 @@ export class MapHero {
         }
     }
 
-    leaveRange() {
+    public movePath(path:MapPath, callback:Function) {
+        this._pathIdx = 1; //第一个目标点是起始点的下一个所以是路径的第二个元素
+        this._way = path.way;
+        this._movePathCallback = callback;
+        this.continueMove();
+    }
+
+    private continueMove() {
+        var hero = this;
+        this.moveTo(this._way[this._pathIdx].corde, function() {
+            hero._pathIdx++;
+            if (hero._pathIdx == hero._way.length) {
+                hero._movePathCallback();
+            }else{
+                hero.continueMove();
+            }
+        });
+    }
+
+    private leaveRange() {
         this._rangeOfGrids.forEach(gridPos => {
             GameMap.Instance.gridLeaveRange(gridPos);
         })
         this._rangeOfGrids.length = 0;
     }
 
-    enterRange() {
+    private enterRange() {
         var posGrid = this.PosGrid;
         var range = this._data.ViewRange;
         var range2 = range * range;

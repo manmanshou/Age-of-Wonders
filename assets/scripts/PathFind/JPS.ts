@@ -51,6 +51,13 @@ export class JPSNode<DATA> {
         this.visitCount = 0;
     }
 
+    public reset() {
+        this.parentIndex = -1;
+        this.currentDir = JPSNode.JPS_DIR.NONE;
+        this.isJump = false;
+        this.visitCount = 0;
+    }
+
     public hasParent(): boolean {
         return this.parentIndex != -1;
     }
@@ -129,6 +136,7 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
                 parentIndex = parent.parentIndex;
             }
         }
+        path.reverse();
         return path;
     }
 
@@ -142,7 +150,7 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
             this.lineSearch(point, curdir);
             //相对左前方
             let rlfdv = this.relativeLeftForwardCorde(curdir);
-            let rlfnode = this.nextPointByCorde(curcorde.add(rlfdv));
+            let rlfnode = this.nextPointByCorde(new Vec2(curcorde.x + rlfdv.x, curcorde.y + rlfdv.y));
             if (rlfnode && this.checkPointGood(rlfnode) == true) {
                 rlfnode.currentDir = this.twoPointDir(rlfnode, point);
                 if (rlfnode.parentIndex == -1)
@@ -153,7 +161,7 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
             }
             //相对右前方
             let rrfdv = this.relativeRightForwardCorde(curdir);
-            let rrfnode = this.nextPointByCorde(curcorde.add(rrfdv));
+            let rrfnode = this.nextPointByCorde(new Vec2(curcorde.x + rrfdv.x, curcorde.y + rrfdv.y));
             if (rrfnode && this.checkPointGood(rrfnode) == true) {
                 rrfnode.currentDir = this.twoPointDir(rrfnode, point);
                 if (rrfnode.parentIndex == -1)
@@ -188,7 +196,7 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
                 }
                 //相向斜角
                 let sldv = this.nextSlashDeCorde(curdir);
-                let slnode = this.nextPointByCorde(curcorde.add(sldv));
+                let slnode = this.nextPointByCorde(new Vec2(curcorde.x + sldv.x, curcorde.y + sldv.y));
                 if (slnode && this.checkPointGood(slnode) == true) {
                     slnode.currentDir = curdir;
                     if (slnode.parentIndex == -1)
@@ -234,7 +242,7 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
         // }
 
         let dv = this.nextDirectDeCorde(dir);
-        let nextNode = this.nextPointByCorde(point.corde.add(dv));
+        let nextNode = this.nextPointByCorde(new Vec2(point.corde.x + dv.x, point.corde.y + dv.y));
         if (nextNode) {
             if (this.checkPointGood(nextNode) == false) {
                 if (this.isEndPoint(nextNode) == true) {
@@ -261,7 +269,7 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
         }
         //这个斜角的垂直分量搜索完毕，继续按照这个方向找他的同向斜角
         let sldv = this.nextSlashDeCorde(point.currentDir);
-        let nextNode = this.nextPointByCorde(point.corde.add(sldv));
+        let nextNode = this.nextPointByCorde(new Vec2(point.corde.x + sldv.x, point.corde.y + sldv.y));
         if (nextNode) {
             if (this.checkPointGood(nextNode) == true) {
                 nextNode.currentDir = point.currentDir;
@@ -274,11 +282,11 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
     }
 
     private checkLinePointHasForceNeighbor(dv: Vec2, fdv: Vec2, parent: T): T {
-        let node = this.nextPointByCorde(parent.corde.add(dv));
+        let node = this.nextPointByCorde(new Vec2(parent.corde.x + dv.x, parent.corde.y + dv.y));
         if (node) {
             if (this.checkPointGood(node) == false) {
                 //再查他的相对左前方是否可走，如果可走，则它是跳点，它的相对左前方是强迫邻居
-                let fnode = this.nextPointByCorde(parent.corde.add(fdv));
+                let fnode = this.nextPointByCorde(new Vec2(parent.corde.x + fdv.x, parent.corde.y + fdv.y));
                 if (fnode) {
                     if (this.checkPointGood(fnode) == true) {//相对右前方可走
                         //node点是跳点

@@ -3,6 +3,7 @@ import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, c
 import { DataManager } from './DataManager';
 import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, FogType, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT, WorldSprDefine } from './MapGenerator';
 import { MapObject } from './MapObject';
+import { MapPath } from './MapPath';
 import { JPS, JPSCheckTag, JPSNode } from './PathFind/JPS';
 import { Player } from './Player';
 import { Random } from './Random';
@@ -172,6 +173,10 @@ export class GameMap {
 
     private _jpsPathFinder:JPS<JPSNode<any>, any>;
 
+    private _mapPath:MapPath;
+
+    private _inMoving:boolean;
+
     private static _instance:GameMap;
     public static get Instance() {
         if (GameMap._instance == null) {
@@ -214,11 +219,9 @@ export class GameMap {
         }
         var gameMap = this;
         ResManager.Instance.loadWorldAssets("style01", function () {
-            ResManager.Instance.loadHeroAssets(function () {
-                ResManager.Instance.loadMapObjectAssets(function () {
-                    gameMap.onLoadAssetFinish();
-                    gameMap._init = true;    
-                });
+            ResManager.Instance.loadBaseAssets(function () {
+                gameMap.onLoadAssetFinish();
+                gameMap._init = true;
             });
         });
     }
@@ -263,15 +266,13 @@ export class GameMap {
         if (this.selectNode == undefined) {
             var node = new Node("Select");
             var spr = node.addComponent(Sprite);
+            spr.spriteFrame = ResManager.Instance.getUISpr("grid");
             var trans = node.getComponent(UITransform);
+            trans.setAnchorPoint(0, 0);
+            trans.setContentSize(GRID_SIZE, GRID_SIZE);
             node.parent = this.SceneTopRoot;
             node.position = new Vec3(pos.x * GRID_SIZE, pos.y * GRID_SIZE, 0);
             this.selectNode = node;
-            resources.load("ui/grid/spriteFrame", SpriteFrame, function(err, asset) {
-                spr.spriteFrame = asset;
-                trans.setAnchorPoint(0, 0);
-                trans.setContentSize(GRID_SIZE, GRID_SIZE);
-            });
         }else {
             this.selectNode.position = new Vec3(pos.x * GRID_SIZE, pos.y * GRID_SIZE, 0);
         }
@@ -357,10 +358,6 @@ export class GameMap {
                 area.refreshNode(posGrid);
             }
         }
-    }
-
-    public startMove() {
-
     }
 
     private onLoadAssetFinish() {
@@ -480,19 +477,41 @@ export class GameMap {
             ContextMenuPanel.Instance.show(uiWorldPos, false, true);
             this.setSelect(gridPos, true);
         }else if (!grid.IsBlock) {
+            if (this._inMoving) {
+                return;
+            }
             var path = this.findPath(this.Player.CurHero.PosGrid, gridPos);
-            if (path.length > 0) {
+            if (path && path.length > 0) {
                 ContextMenuPanel.Instance.show(uiWorldPos, true, false);
-                this.showPath(path);
+                if (this._mapPath != undefined) {
+                    this._mapPath.destory();
+                }
+                this._mapPath = new MapPath(path);
             }
         }
     }
 
-    private showPath(path:Array<JPSNode<any>>) {
-
+    public startMove() {
+        if (this._inMoving) {
+            return;
+        }
+        if (this._mapPath == undefined) {
+            return;
+        }
+        this._inMoving = true;
+        var gameMap = this;
+        this.Player.CurHero.movePath(this._mapPath, function() {
+            gameMap._inMoving = false;
+            gameMap._mapPath.destory();
+            gameMap._mapPath = null;
+        });
     }
 
     private findPath(posStart:Vec2, posEnd:Vec2) {
+        //重置node
+        this._jpsNodes.forEach(node => {
+            node.reset();
+        });
         var startNodeIdx = posStart.x + posStart.y * this.Data.Size.x * AREA_SIZE_X;
         var startNode = this._jpsNodes[startNodeIdx];
         var endNodeIdx = posEnd.x + posEnd.y * this.Data.Size.x * AREA_SIZE_X;
