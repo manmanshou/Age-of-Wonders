@@ -1,5 +1,5 @@
 
-import { _decorator, Component, Node, Vec2 } from 'cc';
+import { _decorator, Component, Node, Vec2, math } from 'cc';
 const { ccclass, property } = _decorator;
 
 export class JPSCheckTag {
@@ -137,14 +137,28 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
         let path = new Array<T>();
         path.push(this.endPoint);
         let parentIndex = this.endPoint.parentIndex;
+        var lastPoint = this.endPoint;
         while (parentIndex != -1) {
             let parent = this.allPoint[parentIndex];
             if (parent) {
+                
+                //斜着走的路径点之间如果一边有障碍，则补一个拐点
+                if (Math.abs(parent.corde.x - lastPoint.corde.x) > 0 && Math.abs(parent.corde.y - lastPoint.corde.y) > 0) {
+                    var index1 = parent.corde.x + lastPoint.corde.y * this.width;
+                    var index2 = lastPoint.corde.x + parent.corde.y * this.width;
+                    if (!this.allPoint[index1].myTag.isGood()) {
+                        path.push(this.allPoint[index2]);
+                    }else if (!this.allPoint[index2].myTag.isGood()) {
+                        path.push(this.allPoint[index1]);
+                    }
+                }
+
                 path.push(parent);
                 parentIndex = parent.parentIndex;
+                lastPoint = parent;
             }
         }
-        path.reverse();
+        path.reverse(); //翻转数组，从起始点开始
         return path;
     }
 
