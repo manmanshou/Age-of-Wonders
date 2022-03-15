@@ -444,36 +444,42 @@ export class GameMap {
         this._currentArea.y = centerAreaY;
     }
 
-    private onTouchStart(event:EventTouch) {
-        this._touchStartPos = event.getLocation(); //获取点击位置的屏幕坐标
+    public gridPosToUIWorldPos(gridPos:Vec2):Vec3 {
         const canvasPos = new Vec2(800, 450);
-        var screenPos = new Vec3(this._touchStartPos.x, this._touchStartPos.y, 0);
+        var gridWorldPos = new Vec3(gridPos.x * GRID_SIZE + canvasPos.x + GRID_SIZE / 2, gridPos.y * GRID_SIZE + canvasPos.y + GRID_SIZE / 2, 0);
+        var gridScreenPos = new Vec3();
+        this.Camera.worldToScreen(gridWorldPos, gridScreenPos);
+        var uiWorldPos = new Vec3();
+        this.UICamera.screenToWorld(gridScreenPos, uiWorldPos);
+        uiWorldPos.z = 0;
+        return uiWorldPos;
+    }
+
+    public screenPosToGridPos(screenPos2:Vec2) {
+        const canvasPos = new Vec2(800, 450);
+        var screenPos3 = new Vec3(screenPos2.x, screenPos2.y, 0);
         var worldPos = new Vec3();
-        this.Camera.screenToWorld(screenPos, worldPos);
+        this.Camera.screenToWorld(screenPos3, worldPos);
         var gridX = Math.floor((worldPos.x - canvasPos.x) / GRID_SIZE);
         var gridY = Math.floor((worldPos.y - canvasPos.y) / GRID_SIZE);
+        return new Vec2(gridX, gridY);
+    }
 
-        ContextMenuPanel.Instance.init();
+    private onTouchStart(event:EventTouch) {
+        this._touchStartPos = event.getLocation(); //获取点击位置的屏幕坐标
+        var gridPos = this.screenPosToGridPos(this._touchStartPos);
         this.setSelect(Vec2.ZERO, false);
 
-        var grid = this.Data.getGrid(gridX, gridY);
+        var grid = this.Data.getGrid(gridPos.x, gridPos.y);
         if (grid == undefined) {
             return;
         }
         if (grid.FogType == FogType.UnExplored) {
             return;
         }
-        var gridPos = new Vec2(gridX, gridY);
-
-        var gridWorldPos = new Vec3(gridX * GRID_SIZE + canvasPos.x + GRID_SIZE / 2, gridY * GRID_SIZE + canvasPos.y, worldPos.z);
-        var gridScreenPos = new Vec3();
-        this.Camera.worldToScreen(gridWorldPos, gridScreenPos);
-        var uiWorldPos = new Vec3();
-        this.UICamera.screenToWorld(gridScreenPos, uiWorldPos);
-
         var obj = this.getMapObject(gridPos);
         if (obj != undefined) {
-            ContextMenuPanel.Instance.show(uiWorldPos, false, true);
+            ContextMenuPanel.Instance.show(gridPos, false, true);
             this.setSelect(gridPos, true);
         }else if (!grid.IsBlock) {
             if (this._inMoving) {
@@ -481,7 +487,7 @@ export class GameMap {
             }
             var path = this.findPath(this.Player.CurHero.PosGrid, gridPos);
             if (path && path.length > 0) {
-                ContextMenuPanel.Instance.show(uiWorldPos, true, false);
+                ContextMenuPanel.Instance.show(gridPos, true, false);
                 if (this._mapPath != undefined) {
                     this._mapPath.destory();
                 }
@@ -509,10 +515,6 @@ export class GameMap {
     }
 
     private findPath(posStart:Vec2, posEnd:Vec2) {
-        //重置node
-        this._jpsNodes.forEach(node => {
-            node.reset();
-        });
         var startNodeIdx = posStart.x + posStart.y * this.Data.Size.x * AREA_SIZE_X;
         var startNode = this._jpsNodes[startNodeIdx];
         var endNodeIdx = posEnd.x + posEnd.y * this.Data.Size.x * AREA_SIZE_X;

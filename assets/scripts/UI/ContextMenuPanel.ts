@@ -17,19 +17,16 @@ export class ContextMenuPanel extends Component {
     start () {
         ContextMenuPanel.Instance = this;
         this.BtnMoveTo.node.on(Button.EventType.CLICK, this.onMoveTo, this);
-
-        this.init();
-    }
-
-    public init() {
+        this.BtnPick.node.on(Button.EventType.CLICK, this.onPick, this);
         this.BtnMoveTo.node.active = false;
         this.BtnPick.node.active = false;
-        this.node.active = false;
     }
 
-    public show(pos:Vec3, move:boolean, pick:boolean) {
-        this.node.active = true;
-        this.node.setWorldPosition(pos); 
+    public show(pos:Vec2, move:boolean, pick:boolean) {
+        var uiWorldPos = GameMap.Instance.gridPosToUIWorldPos(pos);        
+        this.BtnMoveTo.node.active = false;
+        this.BtnPick.node.active = false;
+        this.node.setWorldPosition(uiWorldPos);
         if (move) {
             this.BtnMoveTo.node.active = true;
         }
@@ -39,13 +36,17 @@ export class ContextMenuPanel extends Component {
     }
 
     public hide() {
-        this.node.active = false;
         this.BtnMoveTo.node.active = false;
         this.BtnPick.node.active = false;
     }
 
     private onMoveTo() {
         GameMap.Instance.startMove();
+        this.hide();
+    }
+
+    private onPick() {
+        GameMap.Instance
         this.hide();
     }
 }

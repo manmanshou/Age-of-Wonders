@@ -15,7 +15,7 @@ export class MapHero {
     public Node:Node; //英雄节点
     private _rangeOfGrids:Array<Vec2>;
     private _pathIdx:number;
-    private _way:Array<JPSNode<any>>;
+    private _path:MapPath;
     private _movePathCallback:Function;
 
     constructor(data:HeroData) {
@@ -76,16 +76,17 @@ export class MapHero {
 
     public movePath(path:MapPath, callback:Function) {
         this._pathIdx = 1; //第一个目标点是起始点的下一个所以是路径的第二个元素
-        this._way = path.way;
+        this._path = path;
         this._movePathCallback = callback;
         this.continueMove();
     }
 
     private continueMove() {
         var hero = this;
-        this.moveTo(this._way[this._pathIdx].corde, function() {
+        this.moveTo(this._path.way[this._pathIdx].corde, function() {
+            hero._path.hideNode(hero._pathIdx);
             hero._pathIdx++;
-            if (hero._pathIdx == hero._way.length) {
+            if (hero._pathIdx == hero._path.way.length) {
                 hero._movePathCallback();
             }else{
                 hero.continueMove();

@@ -94,6 +94,9 @@ export class JPS<T extends JPSNode<DATA>, DATA> {
     }
 
     findPath(start: T, end: T, all: Array<T>, w: number, h: number): Array<T> {
+        all.forEach(node => {
+           node.reset(); 
+        });
         this.openSet = new Array();
         this.closeSet = new Array();
         this.startPoint = start;

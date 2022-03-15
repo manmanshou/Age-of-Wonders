@@ -23,7 +23,7 @@ export class MapPath {
         this.rootNode = new Node("PathRoot");
         this.rootNode.parent = GameMap.Instance.SceneTopRoot;
         this.nodeArray = new Array<Node>();
-        for (var i = 1; i < path.length; i++) {
+        for (var i = 0; i < path.length; i++) {
             var node = new Node("wayPoint" + i);
             node.parent = this.rootNode;
             var pathNode = path[i];
@@ -57,14 +57,15 @@ export class MapPath {
             trans.setContentSize(GRID_SIZE, GRID_SIZE);
             this.nodeArray.push(node);
         }
+        this.hideNode(0);
     }
 
     public destory() {
         this.rootNode.destroy();
     }
 
-    public removeNode() {
-
+    public hideNode(idx:number) {
+        this.nodeArray[idx].active = false;
     }
 }
 
