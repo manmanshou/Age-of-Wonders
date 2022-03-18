@@ -48,6 +48,7 @@ export class ResManager {
             "hero", "scene/spriteFrame/hero",
             "ui", "ui", 
             "mapObj", "scene/spriteFrame/dynamicObj",
+            "npc", "scene/spriteFrame/npc"
         ];
         this._assetBin = new Map<string, Map<string, SpriteFrame>>();
         this._baseLoadIdx = 0;
@@ -76,6 +77,10 @@ export class ResManager {
 
     public getUISpr(name:string) {
         return this._assetBin["ui"][name];
+    }
+
+    public getNPCSpr(name:string) {
+        return this._assetBin["npc"][name];
     }
 }
 

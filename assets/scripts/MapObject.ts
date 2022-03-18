@@ -1,7 +1,7 @@
 
 import { _decorator, Node, Vec2, Sprite, UITransform, Vec3 } from 'cc';
 import { GameMap } from './GameMap';
-import { GRID_SIZE } from './MapGenerator';
+import { GRID_SIZE, HALF_GRID_SIZE } from './MapGenerator';
 import { ResManager } from './ResManager';
 const { ccclass, property } = _decorator;
 
@@ -39,9 +39,8 @@ export class MapObject {
         var spr = node.addComponent(Sprite);
         spr.spriteFrame = ResManager.Instance.getMapObjectSpr(this.Data.Type, this.Data.State);
         var trans = node.addComponent(UITransform);
-        trans.setAnchorPoint(0, 0);
-        trans.setContentSize(GRID_SIZE, GRID_SIZE);
-        node.position = new Vec3(posGrid.x * GRID_SIZE, posGrid.y * GRID_SIZE, 0);
+        trans.setContentSize(GRID_SIZE / 1.5, GRID_SIZE / 1.5);
+        node.position = new Vec3(posGrid.x * GRID_SIZE + HALF_GRID_SIZE, posGrid.y * GRID_SIZE + HALF_GRID_SIZE, 0);
         this.Node = node;
         this.PosGrid = posGrid;
     }

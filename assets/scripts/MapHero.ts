@@ -30,9 +30,8 @@ export class MapHero {
             this.Node = node;
             var spr = node.addComponent(Sprite);
             spr.spriteFrame = ResManager.Instance.getHeroSpr(this._data.Class, 0, this._data.Rank);
-            var trans = this.Node.addComponent(UITransform);
-            trans.setAnchorPoint(0.5, 0.5);
-            trans.setContentSize(GRID_SIZE, GRID_SIZE);
+            var trans = this.Node.getComponent(UITransform);
+            trans.setContentSize(GRID_SIZE / 1.2, GRID_SIZE / 1.2);
         }
         this.moveTo(posGrid, null);
     }

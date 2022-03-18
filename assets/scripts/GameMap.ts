@@ -9,7 +9,6 @@ import { Player } from './Player';
 import { Random } from './Random';
 import { ResManager } from './ResManager';
 import { ContextMenuPanel } from './UI/ContextMenuPanel';
-import { MovePanel } from './UI/MovePanel';
 const { ccclass, property } = _decorator;
 
 class MapGrid {
