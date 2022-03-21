@@ -5,19 +5,15 @@ import { GRID_SIZE, HALF_GRID_SIZE } from './MapGenerator';
 import { ResManager } from './ResManager';
 const { ccclass, property } = _decorator;
 
-enum MapObjectType {
+export enum MapObjectType {
     Chest1 = 1,     //宝箱1
     Coffin = 2,     //棺材
 }
 
 export class MapObjectData {
-    public Type: MapObjectType;
-    public State: number;
-
-    constructor(t:MapObjectType, state:number) {
-        this.Type = t;
-        this.State = state;
-    }
+    public Type: MapObjectType; //类型
+    public State: number;       //状态
+    public InitPos: Vec2;       //初始位置，房间中的相对位置
 }
 
 
@@ -33,7 +29,7 @@ export class MapObject {
         this.ID = id;
     }
 
-    private createNode(parentNode:Node, posGrid:Vec2) {
+    protected createNode(parentNode:Node, posGrid:Vec2) {
         var node = new Node(this.Data.Type.toString());
         node.parent = parentNode;
         var spr = node.addComponent(Sprite);
@@ -45,29 +41,15 @@ export class MapObject {
         this.PosGrid = posGrid;
     }
 
-    public onInit() {
-
-    }
-
     public onPick() {
         return false;
-    }
-
-    public static createChest(id:number, parentNode:Node, posGrid:Vec2) {
-        var obj = new MapChest(id);
-        obj.createNode(parentNode, posGrid);
-        obj.onInit();
-        return obj;
     }
 }
 
 export class MapChest extends MapObject {
-    constructor(id:number) {
-        var data = new MapObjectData(MapObjectType.Chest1, 0);
+    constructor(id:number, data:MapObjectData, parentNode:Node, posGrid:Vec2) {
         super(id, data);
-    }
-
-    public onInit() {
+        this.createNode(parentNode, posGrid);
         GameMap.Instance.addBlock(this.PosGrid);
     }
 

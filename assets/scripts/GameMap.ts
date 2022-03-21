@@ -2,7 +2,7 @@
 import { _decorator, Component, Node, Vec2, Vec3, Rect, debug, Button, Camera, color, Color, Sprite, UITransform, SpriteFrame, instantiate, Canvas, Game, game, resources, Event, EventTouch, math, view } from 'cc';
 import { DataManager } from './DataManager';
 import { AREA_GRID_COUNT, AREA_SIZE_X, AREA_SIZE_Y, FogType, GridData, GRID_SIZE, MapAreaData, MapData, MapGenerator, VIEW_AREA_COUNT, WorldSprDefine } from './MapGenerator';
-import { MapObject } from './MapObject';
+import { MapChest, MapObject, MapObjectData, MapObjectType } from './MapObject';
 import { MapPath } from './MapPath';
 import { JPS, JPSCheckTag, JPSNode } from './PathFind/JPS';
 import { Player } from './Player';
@@ -554,12 +554,10 @@ export class GameMap {
         this.Player = player;
 
         var id = this.generateID();
-        var chest = MapObject.createChest(id, this.SceneMidRoot, enterPos)
+        var data = new MapObjectData();
+        data.State = 0;
+        data.Type = MapObjectType.Chest1;
+        var chest = new MapChest(id, data, this.SceneMidRoot, enterPos)
         this.Objects.set(id, chest);
-    }
-    
-    //根据生成好的地图，随机散布资源（桶、棺材、箱子）
-    private genMapObject() {
-
     }
 }

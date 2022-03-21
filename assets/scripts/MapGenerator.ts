@@ -541,7 +541,7 @@ export class MapGenerator {
         //随机一个空地作为传送过来时的插入点
         var allWay = new Array<number>();
         for (var i = 0; i < room.Grids.length; i++) {
-            if (!grid.IsBlock) {
+            if (!room.Grids[i].IsBlock) {
                 allWay.push(i);
             }
         }

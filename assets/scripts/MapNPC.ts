@@ -4,32 +4,31 @@ import { GRID_SIZE, HALF_GRID_SIZE } from './MapGenerator';
 import { ResManager } from './ResManager';
 const { ccclass, property } = _decorator;
 
-class NPCData {
+export class NPCData {
     Name:string;
     IsFriendly:boolean;
     Health:number = 1;
     Scale:number = 1;
+    InitPos:Vec2;       //初始在房间中的位置
 }
 
+//地图上的非玩家生物
 export class MapNPC {
-    _data:NPCData;
+    ID:number;
+    Data:NPCData;
     Node:Node;
     PosGrid:Vec2;
 
-    constructor(data:NPCData) {
-        this._data = data;
-    }
-
-    public enterScene(posGrid:Vec2, parentNode:Node) {
-        if (this.Node == null) {
-            var node = new Node(this._data.Name);
-            node.parent = parentNode;
-            this.Node = node;
-            var spr = node.addComponent(Sprite);
-            spr.spriteFrame = ResManager.Instance.getNPCSpr(this._data.Name);
-            var trans = this.Node.getComponent(UITransform);
-            trans.setContentSize(GRID_SIZE * this._data.Scale, GRID_SIZE * this._data.Scale);
-        }
+    constructor(id:number, data:NPCData, posGrid:Vec2, parentNode:Node) {
+        this.ID = id;
+        this.Data = data;
+        var node = new Node(this.Data.Name);
+        node.parent = parentNode;
+        this.Node = node;
+        var spr = node.addComponent(Sprite);
+        spr.spriteFrame = ResManager.Instance.getNPCSpr(this.Data.Name);
+        var trans = this.Node.getComponent(UITransform);
+        trans.setContentSize(GRID_SIZE * this.Data.Scale, GRID_SIZE * this.Data.Scale);
         var targetPos = new Vec3(posGrid.x * GRID_SIZE + HALF_GRID_SIZE, posGrid.y * GRID_SIZE + HALF_GRID_SIZE, 0);
         this.PosGrid = posGrid;
         this.Node.position = targetPos;
